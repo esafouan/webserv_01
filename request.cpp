@@ -109,11 +109,11 @@ void fill_map(std::map<std::string, std::string> &map, std::vector<std::string> 
    
 }
 
-Request::Request(std::string req)
+Request::Request(std::string req,int fd) : _fd(fd)
 {
     int filmap = 0;
 
-    std::cout << req << std::endl;
+    // std::cout << req << std::endl;
     std::vector<std::string> myreq;
     split_rquest(myreq, req, '\n');
 
@@ -122,19 +122,10 @@ Request::Request(std::string req)
     //    std::cout << *it <<std::endl;
     fill_type(method, target, httpVersion, myreq, &filmap);
 
-    std::cout << method <<std::endl;
-    std::cout << target <<std::endl;
-    std::cout << httpVersion <<std::endl;
 
     if(!filmap)
     {
         fill_map(myRequest, myreq);  
-        std::map<std::string,std::string>::const_iterator it = myRequest.begin();
-        for (it ;it != myRequest.end(); it++)
-        {
-            std::cout << "key = " << it->first;
-            std::cout << " value = " << it->second << std::endl;
-       }
     }
         
     // ///print_elements
