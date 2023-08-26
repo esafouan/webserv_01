@@ -27,7 +27,7 @@ int soc::request_part(int fd_cl)
     // mahdi request
     if (n_read > 0)
     {
-        Request obj(request, fd_cl);
+        Request obj(request, fd_cl, ser);
         req.push_back(obj);
         ev.events = EPOLLOUT;
         ev.data.fd = fd_cl;

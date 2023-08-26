@@ -2,6 +2,20 @@
 #include <cstdlib>
 #include <stdio.h>
 
+void Request::print_element()
+{
+    std::cout << method <<std::endl;
+    std::cout << target <<std::endl;
+    std::cout << httpVersion <<std::endl;
+
+    std::map<std::string,std::string>::const_iterator it = myRequest.begin();
+    for (it ;it != myRequest.end(); it++)
+    {
+       std::cout << "key = " << it->first;
+       std::cout << " value =" << it->second << std::endl;
+    }
+}
+
 void split_rquest(std::vector<std::string> & r, std::string & req, char c)
 {
     std::string                 tmp;
@@ -68,6 +82,7 @@ void fill_type(std::string & meth, std::string & tar, std::string & http, std::v
     
 
 }
+
 int check_new_lines(std::string str)
 {
     int i = 0;
@@ -104,33 +119,145 @@ void fill_map(std::map<std::string, std::string> &map, std::vector<std::string> 
             }
             map.insert(std::pair<std::string, std::string>(first, second));
         }
-
     }
-   
 }
 
-Request::Request(std::string req,int fd) : _fd(fd)
+void error(std::string str)
+{
+    std::cout << str << std::endl;
+    exit (1);
+}
+
+int find_key(std::string key, std::map<std::string, std::string> &headers)
+{
+    std::map<std::string, std::string>::iterator it = headers.find(key);
+
+    if(it != headers.end())
+        return 1;
+    return 0;
+}
+
+std::string valueOfkey(std::string key, std::map<std::string, std::string> &headers)
+{
+    return (headers[key]);
+}
+
+void pars_headers(std::map<std::string, std::string> &headers, std::string & stat)
+{
+    std::map<std::string, std::string>::iterator it = headers.begin();
+
+
+    if (!find_key("Transfer-Encoding", headers) && valueOfkey("Transfer-Encoding", headers) != " chunked")
+    {
+        stat = "501";
+        error("501");
+    }
+
+    else if (!find_key("Transfer-Encoding", headers) && !find_key("Content-Length", headers))
+    {
+        stat = "400";
+        error("400");
+    }
+
+
+}
+
+int check_uri(std::string &uri)
+{
+    std::string forbiden = " \"<>#%{}\\^~[]`/?&=+$,|";
+    int i = 0;
+    int j;
+    while(uri[i++])
+    {
+        if(forbiden.find(uri[i]) != std::string::npos)
+            return 0;
+    }
+    return 1;
+}
+
+void Request::error_handling(Server &serv)
+{
+    //std::cout << serv.locations[0].NAME << std::endl;
+
+
+    if (( method == "GET" && serv.locations[0].GET == false )
+        || ( method == "POST" && serv.locations[0].POST == false )
+        || ( method == "DELETE" && serv.locations[0].DELETE == false ))
+    {
+        status = "404";
+        error ("404 Bad Request");
+    }
+    else if (method != "GET" && method != "DELETE" && method != "POST")
+    {
+        if(method == "PUT" || method == "HEAD" || method == "TRACE" || method == "CONNECT")
+        {
+            status = "501";
+            error ("501 not implemented");
+        }
+        status = "404";
+        error ("404 Bad Request");
+    }
+    else if (target.size() > 2048)
+    {
+        status = "414";
+        error ("414 Request-URI Too Long");
+    }
+    else if (!check_uri(target))
+    {
+       status = "400";
+       error ("400 Bad Request");
+    }
+    else 
+    {
+        int flag = 0;
+        for(int i = 0; i < serv.locations.size();i++)
+        {
+            //std::cout << serv.locations[i].NAME << std::endl;
+            //std::cout << target << std::endl;
+            if (serv.locations[i].NAME == target)
+            {
+                  target = serv.locations[i].root;
+                  flag = 1;
+                  break;
+            }   
+        }
+        if(!flag)
+        {
+            status = "404";
+            error ("404 Not Found");
+        }
+    }
+    //else if(find_key("Content-Length", myRequest))
+    //{
+       // int content = std::atoi(reinterpret_cast<const char *>(&valueOfkey("Content-Length", myRequest)));
+       // if(content > serv.max_body)
+        //{
+        //    status = "413";
+        //    error("413 Request Entity Too Large");
+       // }
+    //}
+    //else if(httpVersion != "HTTP/1.1")
+    //{
+    //    status = "400";
+    //    error("400 Bad Request");
+    //}
+
+    //pars_headers(myRequest, status);
+}
+
+Request::Request(std::string req, int fd, Server server) : _fd(fd)
 {
     int filmap = 0;
-
-    // std::cout << req << std::endl;
     std::vector<std::string> myreq;
+    
     split_rquest(myreq, req, '\n');
-
-    //std::vector<std::string>::iterator it = myreq.begin();
-    //for(;it != myreq.end(); it++)
-    //    std::cout << *it <<std::endl;
     fill_type(method, target, httpVersion, myreq, &filmap);
-
-
-    if(!filmap)
-    {
+    if (!filmap)
         fill_map(myRequest, myreq);  
-    }
-        
-    // ///print_elements
-
-
+    //Request::print_element();
+    Request::error_handling(server);
+    std::cout << target << std::endl;
+    //print_elements
 }
 
 Request::~Request()

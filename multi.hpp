@@ -42,22 +42,7 @@
 //     struct client_info *next;
 // }  s_client;
 
-// mahdi
 
-class Request
-{
-public:
-    std::string method;
-    std::string target;
-    std::string httpVersion;
-    std::string status;
-    int _fd;
-    std::map<std::string, std::string> myRequest;
-
-public:
-    Request(std::string req, int fd);
-    ~Request();
-};
 
 /// reda
 
@@ -88,6 +73,25 @@ public:
     std::string root;
     std::string index;
     std::vector<location> locations;
+};
+
+// mahdi
+
+class Request 
+{
+   public :
+        std::string method;
+        std::string target;
+        std::string httpVersion;
+        std::string status;
+        int _fd;
+        std::map <std::string, std::string> myRequest;
+    
+    public :
+        Request(std::string req, int fd, Server server);
+        void print_element();
+        void error_handling(Server &serv);
+        ~Request();
 };
 
 class soc

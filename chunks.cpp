@@ -225,7 +225,7 @@ int main(int ac, char **av)
                     // mahdi request
                     if (n_read > 0)
                     {
-                        Request obj(request, events[i].data.fd);
+                        Request obj(request, events[i].data.fd, servers[0]);
                         requests.push_back(obj);
                         ev.events = EPOLLOUT;
                         ev.data.fd = events[i].data.fd;
