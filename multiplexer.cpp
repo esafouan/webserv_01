@@ -6,21 +6,20 @@ void err(std::string str)
     std::cout << str << std::endl;
     _exit(1);
 }
-std::string constructResponseHeader(const std::string &contentType, size_t contentLength, std::vector<Request> req)
+std::string constructResponseHeader(const std::string &contentType, std::string status)
 {
     std::string header;
 
-    (void)req;
+    
     // Status line
-    header += "HTTP/1.1 200 OK\r\n";
+    header += "HTTP/1.1 ";
+    header += status;
+    header += "\r\n";
 
     // Content-Type header
     header += "Content-Type: " + contentType + "\r\n";
-
-    // Content-Length header
-    std::stringstream contentLengthStream;
-    contentLengthStream << contentLength;
-    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
+    //chunks
+    header += "Transfer-Encoding: chunked\r\n";
 
     // Blank line
     header += "\r\n";
@@ -65,19 +64,19 @@ std::string get_content_type(const char *path)
     }
     return "application/octet-stream";
 }
-std::string birng_content(std::vector<Request> req, int reciver)
-{
-    std::string target;
-    for (int i = 0; i < req.size(); i++)
-        if (req[i]._fd == reciver)
-            target = req[i].target;
-    target = target.substr(1);
-    if (target == "")
-        return "";
-    target = get_content_type(target.c_str());
+// std::string birng_content(std::vector<Request> req, int reciver)
+// {
+//     std::string target;
+//     for (int i = 0; i < req.size(); i++)
+//         if (req[i].fd == reciver)
+//             target = req[i].target;
+//     target = target.substr(1);
+//     if (target == "")
+//         return "";
+//     target = get_content_type(target.c_str());
 
-    return target;
-}
+//     return target;
+// }
 std::string generateDirectoryListing(const std::string &directoryPath)
 {
     std::stringstream htmlStream;
@@ -114,10 +113,15 @@ int main(int ac, char **av)
         std::cout << "configue file needed" << std::endl;
         return 0;
     }
+    epol ep;
+    ep.ep_fd = epoll_create(1);
+    if (ep.ep_fd == -1)
+        err("epolllll");
     std::vector<Server> servers = mainf(ac, av);
-    soc s(servers[0]);
-    s.init();
-    s.run();
-
+    for(int i = 0;i < servers.size();i++)
+    {
+        init(servers[i],&ep);
+    }
+    run(servers,&ep);
     
 }

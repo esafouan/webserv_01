@@ -178,8 +178,6 @@ int check_uri(std::string &uri)
 void Request::error_handling(Server &serv)
 {
     //std::cout << serv.locations[0].NAME << std::endl;
-
-
     if (( method == "GET" && serv.locations[0].GET == false )
         || ( method == "POST" && serv.locations[0].POST == false )
         || ( method == "DELETE" && serv.locations[0].DELETE == false ))
@@ -227,36 +225,61 @@ void Request::error_handling(Server &serv)
             error ("404 Not Found");
         }
     }
-    //else if(find_key("Content-Length", myRequest))
-    //{
-       // int content = std::atoi(reinterpret_cast<const char *>(&valueOfkey("Content-Length", myRequest)));
-       // if(content > serv.max_body)
-        //{
-        //    status = "413";
-        //    error("413 Request Entity Too Large");
-       // }
-    //}
+
+    if(find_key("Content-Length", myRequest))
+    {
+        std::string val = valueOfkey("Content-Length", myRequest);
+       int content = std::atoi(val.c_str());
+       if(content > serv.max_body)
+        {
+           status = "413";
+           error("413 Request Entity Too Large");
+       }
+    }
     //else if(httpVersion != "HTTP/1.1")
     //{
-    //    status = "400";
-    //    error("400 Bad Request");
-    //}
+        //std::cout << httpVersion << "-" << std::endl;
+    //   status = "400";
+    //   error("400 Bad Request");
+   // }
 
     //pars_headers(myRequest, status);
 }
 
-Request::Request(std::string req, int fd, Server server) : _fd(fd)
+Request::Request(Request const &req)
+{
+    *this = req;
+}
+
+Request& Request::operator=(Request const & req)
+{
+        this->method = req.method;
+        this->target = req.target;
+        this->httpVersion = req.httpVersion;
+        this->status = req.status;
+        // this->_fd = req._fd;
+        this->myRequest = req.myRequest;
+
+        return(*this);
+}
+
+Request::Request()
+{
+
+}
+
+Request::Request(std::string req, Server server)
 {
     int filmap = 0;
     std::vector<std::string> myreq;
-    
+    this->status = "200 OK";
     split_rquest(myreq, req, '\n');
     fill_type(method, target, httpVersion, myreq, &filmap);
     if (!filmap)
-        fill_map(myRequest, myreq);  
-    //Request::print_element();
+        fill_map(myRequest, myreq);
+    // Request::print_element();
     Request::error_handling(server);
-    std::cout << target << std::endl;
+//    std::cout << target << std::endl;
     //print_elements
 }
 

@@ -1,18 +1,14 @@
 
 #include "multi.hpp"
 #define LINE 4096
-void fill_ser_Add(sockaddr_in *add, std::vector<Server> &ser)
-{
-    add->sin_family = AF_INET;
-    add->sin_addr.s_addr = htonl(INADDR_ANY);
-    add->sin_port = htons(ser[0].listen[0]);
-}
+
+
 void err(std::string str)
 {
     std::cout << str << std::endl;
     _exit(1);
 }
-std::string constructResponseHeader1(const std::string &contentType, size_t contentLength, std::vector<Request> req)
+1(const std::string &contentType, size_t contentLength, std::vector<Request> req)
 {
     std::string header;
 
@@ -32,27 +28,7 @@ std::string constructResponseHeader1(const std::string &contentType, size_t cont
 
     return header;
 }
-std::string constructResponseHeader(const std::string &contentType, size_t contentLength, std::vector<Request> req)
-{
-    std::string header;
 
-    (void)req;
-    // Status line
-    header += "HTTP/1.1 200 OK\r\n";
-
-    // Content-Type header
-    header += "Content-Type: " + contentType + "\r\n";
-    header += "Transfer-Encoding: chunked\r\n";
-    // Content-Length header
-    std::stringstream contentLengthStream;
-    contentLengthStream << contentLength;
-    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
-
-    // Blank line
-    header += "\r\n";
-
-    return header;
-}
 std::string get_content_type(const char *path)
 {
     const char *last_dot = strrchr(path, '.');
