@@ -62,48 +62,7 @@ std::string get_content_type(const char *path)
         if (strcmp(last_dot, ".txt") == 0)
             return "text/plain";
     }
-    return "application/octet-stream";
-}
-// std::string birng_content(std::vector<Request> req, int reciver)
-// {
-//     std::string target;
-//     for (int i = 0; i < req.size(); i++)
-//         if (req[i].fd == reciver)
-//             target = req[i].target;
-//     target = target.substr(1);
-//     if (target == "")
-//         return "";
-//     target = get_content_type(target.c_str());
-
-//     return target;
-// }
-std::string generateDirectoryListing(const std::string &directoryPath)
-{
-    std::stringstream htmlStream;
-    htmlStream << "<html><body>\n";
-    htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
-
-    DIR *dir = opendir(directoryPath.c_str());
-    if (dir)
-    {
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL)
-        {
-            std::string entryName = entry->d_name;
-            if (entryName != "." && entryName != "..")
-            {
-                htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
-            }
-        }
-        closedir(dir);
-    }
-    else
-    {
-        htmlStream << "<p>Error opening directory.</p>\n";
-    }
-
-    htmlStream << "</body></html>\n";
-    return htmlStream.str();
+    return "";
 }
 
 int main(int ac, char **av)

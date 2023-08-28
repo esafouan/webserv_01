@@ -26,20 +26,7 @@ void split_rquest(std::vector<std::string> & r, std::string & req, char c)
         r.push_back(tmp);
     }
 }
-void ft_split(std::string input, std::string delimiter, std::vector<std::string>& parts)
-{
-    size_t startPos = 0;
-    size_t endPos;
 
-    while ((endPos = input.find(delimiter, startPos)) != std::string::npos)
-    {
-        parts.push_back(input.substr(startPos, endPos - startPos));
-        startPos = endPos + delimiter.length();
-    }
-
-    // Add the last part (or the whole string if no more delimiter is found)
-    parts.push_back(input.substr(startPos));
-}
 void split_rquest_v2(std::vector<std::string> & r, std::string & req, char c)
 {
     std::string                 tmp;
@@ -121,11 +108,8 @@ void fill_map(std::map<std::string, std::string> &map, std::vector<std::string> 
             split_rquest_v2(line, *it, ':');
             try
             {
-
                 first = line.at(0);
-                second = line.at(1);
-                //std::cout << first << std::endl;
-                //std::cout << second << std::endl; 
+                second = line.at(1); 
             }
             catch(...)
             {
@@ -216,32 +200,33 @@ void Request::error_handling(Server &serv)
         status = "414";
         error ("414 Request-URI Too Long");
     }
-    // else if (!check_uri(target))
-    // {
-    //    status = "400";
-    //    error ("400 Bad Request");
-    // }
+    else if (!check_uri(target))
+    {
+       status = "400";
+       error ("400 Bad Request");
+    }
     else 
     {
         int flag = 0;
         for(int i = 0; i < serv.locations.size();i++)
-        {   
+        {
+            //std::cout << serv.locations[i].NAME << std::endl;
+            //std::cout << target << std::endl;
             size_t pos = target.find(serv.locations[i].NAME);
             if (pos != std::string::npos)
             {
                 //std::cout <<  "hananansbdhsb " << std::endl;
-                target = serv.locations[i].root.append(serv.locations[i].NAME) + target.substr(pos+1);
+                target = serv.locations[i].root + target.substr(pos + 1);
                 //std::cout << target << std::endl;
                 flag = 1;
                 break;
-            }  
+            }   
         }
         if(!flag)
         {
             status = "404";
             error ("404 Not Found");
         }
-
     }
 
     if(find_key("Content-Length", myRequest))
@@ -289,85 +274,22 @@ Request::Request()
     this->fd_file = -1;
 }
 
-
-
-void fill_post_headers(std::vector<std::pair<std::string, std::string> > & postReq, std::vector<std::string> &myreq)
-{
-    std::vector<std::string>::iterator it = myreq.begin();
-    it++;
-    std::string first;
-    std::string second;
-    for(; it != myreq.end(); it++)
-    {
-        std::vector<std::string> line;
-        if(check_new_lines(*it) != 0)
-        {
-            split_rquest_v2(line, *it, ':');
-            try
-            {
-
-                first = line.at(0);
-                second = line.at(1);
-                //std::cout << first << std::endl;
-                //std::cout << second << std::endl; 
-            }
-            catch(...)
-            {
-                first = "";
-                second = "";
-                continue;
-            }
-            postReq.push_back(std::make_pair(first, second));
-            //map.insert(std::pair<std::string, std::string>(first, second));
-        }
-    }
-}
-
-
-void fill_post(std::vector<std::pair<std::string, std::string> > & postReq, std::vector<std::string> & post, std::string &bod)
-{
-    //std::cout << myreq[0] << std::endl;
-    if(post.size() != 2)
-        error("in post hhhhh");
-    std::vector<std::string> first_part;
-
-    ft_split(post[0], "\r\n", first_part);
-
-    fill_post_headers(postReq, first_part);
-
-    bod = post[1];
-}
-
-
-
 Request::Request(std::string req, Server server)
 {
     int filmap = 0;
-    // std::cout << req << std::endl;
     std::vector<std::string> myreq;
     this->status = "200 OK";
     this->header_flag = 0;
     this->fd_file = -1;
-    // split_rquest(myreq, req, '\n');
-    ft_split(req,"\r\n", myreq);
+    split_rquest(myreq, req, '\n');
     fill_type(method, target, httpVersion, myreq, &filmap);
-    if (method == "GET" && !filmap)
-        fill_map(myRequest, myreq);
-    else if(method == "POST" && !filmap)
-    {
-        //std::cout << req << std::endl;
-        std::vector<std::string> post;
-        ft_split(req,"\r\n\r\n", post);
-        fill_post(postReq, post, Body);
-    }
    
-    //std::cout << Body << std::endl;
-    //for(int i = 0; i < postReq.size(); i++)
-    //   std::cout << "first "<< postReq[i].first << "  sec = " << postReq[i].second << std::endl;
-    //Request::print_element();
-    //std::cout << "1=" << target << std::endl;
-    Request::error_handling(server);
-    std::cout << "final =" << target << std::endl;
+    if (!filmap)
+        fill_map(myRequest, myreq);
+    // Request::print_element();
+    Request::error_handling(server); 
+    std::cout << target << std::endl;
+//    std::cout << target << std::endl;
     //print_elements
 }
 

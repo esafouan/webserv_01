@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <string>
 #include <sstream>
-
+#include <signal.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -21,7 +21,7 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <dirent.h>
-
+#include <utility>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -150,8 +150,12 @@ class Request
         std::string httpVersion;
         std::string status;
         int header_flag;
+        int fd_file;
         std::map <std::string, std::string> myRequest;
-    
+        // post
+        std::string Body;
+        std::vector< std::pair<std::string, std::string> > postReq;
+        
     public :
         Request(std::string req, Server server);
         Request(Request const &req);
