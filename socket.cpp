@@ -13,7 +13,6 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
 
     return header;
 }
-
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
     int fd, n_read;
@@ -22,7 +21,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
     char rec[LINE + 1];
     while ((n_read = recv(client_fd, rec, LINE + 1, 0)) > 0)
     {
-        //std::cout << rec << std::endl;
         request += rec;
         if (rec[n_read - 1] == '\n')
             break;
@@ -69,21 +67,20 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
 std::string get_last(std::string path)
 {
     size_t h = 0;
-    
-    while(path.find('/') != std::string::npos)
+
+    while (path.find('/') != std::string::npos)
     {
         h = path.find('/');
         path = path.substr(h + 1);
     }
     return path;
-
 }
 std::string generateDirectoryListing(const std::string &directoryPath)
 {
     std::stringstream htmlStream;
     htmlStream << "<html><body>\n";
     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
-    std::string haha;
+    std::string haha = "";
     DIR *dir = opendir(directoryPath.c_str());
     if (dir)
     {
@@ -91,12 +88,10 @@ std::string generateDirectoryListing(const std::string &directoryPath)
         while ((entry = readdir(dir)) != NULL)
         {
             std::string entryName = entry->d_name;
-            std::cout <<  "entru = "<< entryName << std::endl;
-            std::cout <<  "dir = "<< directoryPath << std::endl;
             haha = get_last(directoryPath) + "/";
             if (entryName != "." && entryName != "..")
             {
-                htmlStream << "<p><a href=\"" << haha+entryName << "\">" << entryName << "</a></p>\n";
+                htmlStream << "<p><a href=\"" << haha + entryName << "\">" << entryName << "</a></p>\n";
             }
         }
         closedir(dir);
@@ -109,82 +104,58 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     htmlStream << "</body></html>\n";
     return htmlStream.str();
 }
+// std::string generateDirectoryListing(const std::string &directoryPath)
+// {
+//     std::stringstream htmlStream;
+//     htmlStream << "<html><body>\n";
+//     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
+
+//     DIR *dir = opendir(directoryPath.c_str());
+//     if (dir)
+//     {
+//         struct dirent *entry;
+//         while ((entry = readdir(dir)) != NULL)
+//         {
+//             std::string entryName = entry->d_name;
+//             if (entryName != "." && entryName != "..")
+//             {
+//                 htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
+//             }
+//         }
+//         closedir(dir);
+//     }
+//     else
+//     {
+//         htmlStream << "<p>Error opening directory.</p>\n";
+//     }
+
+//     htmlStream << "</body></html>\n";
+//     return htmlStream.str();
+// }
+
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
-    std::string target = req[client_fd].target;
-    
-    if ((get_content_type(req[client_fd].target.c_str())) == "")
+    if (req[client_fd].method == "GET")
     {
-        
-        std::string dir;
-        off_t file_size;
-        std::string response_header;
-        dir = generateDirectoryListing(target);
-        file_size = dir.size();
-        response_header = construct_res_dir_list("text/html", file_size);
-        write(client_fd, response_header.c_str(), response_header.size());
-        const size_t buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_read;
-        ssize_t bytes_sent = write(client_fd, dir.c_str(), dir.size());
-        if (bytes_sent == -1)
+        std::string target = req[client_fd].target;
+        if ((get_content_type(req[client_fd].target.c_str())) == "")
         {
-            perror("read ld ");
+            if (!directorie_list(target, client_fd))
+                return 0;
+        }
+        else if (req[client_fd].header_flag == 0)
+        {
+            if (response_header(target, client_fd, req))
+                return 1;
+        }
+        else if (req[client_fd].header_flag == 1)
+        {
+            return(chunked_response(target, client_fd, req));  
         }
 
-        return 0;
     }
-    else if ( req[client_fd].header_flag == 0)
-    {
-        
-        std::string target_to_send = get_content_type(target.c_str());
-        req[client_fd].fd_file = open(target.c_str(), O_RDONLY);
-        std::string response_header = constructResponseHeader(target_to_send, req[client_fd].status);
-        send(client_fd, response_header.c_str(), response_header.size(), 0);
-        req[client_fd].header_flag = 1;
-        return 1;
-    }
-    else if (req[client_fd].header_flag == 1)
-    {
-        const size_t buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_read;
-        if((bytes_read = read(req[client_fd].fd_file, buffer, buffer_size)) > 0)
-        {
-            // chunks
-            std::stringstream chunk_size_stream;
-            chunk_size_stream << std::hex << bytes_read << "\r\n";
-            std::string chunk_size_line = chunk_size_stream.str();
-            if(send(client_fd, chunk_size_line.c_str(), chunk_size_line.size(), 0) < 0)
-            {
-                // perror("chunksize ");
-                close(req[client_fd].fd_file);
-                return 0;
-            }
-            // chunks
-            ssize_t bytes_sent = send(client_fd, buffer, bytes_read, 0);
-            if (bytes_sent == -1)
-            {
-                // perror("in chunk ");
-                close(req[client_fd].fd_file);
-                return 0;
-            }
-            write(client_fd, "\r\n", 2);
-        }
-        if (bytes_read == 0)
-        {
-            write(client_fd, "0\r\n\r\n", 5);
-            close(req[client_fd].fd_file);
-            return 0;
-        }
-        else if (bytes_read > 0)
-        {
-            return 1;
-        }
-    }
-
-    return 1;
+    return 0;
 }
 
 uint32_t ipToUint32(std::string &ip)
@@ -249,8 +220,8 @@ void run(std::vector<Server> servers, epol *ep)
             {
                 if (std::find(servers[j].server_sock.begin(), servers[j].server_sock.end(), ep->events[i].data.fd) != servers[j].server_sock.end())
                 {
-                    // std::cout << "catch a new connection " << std::endl;
                     int client_fd = accept(ep->events[i].data.fd, NULL, NULL);
+                    // std::cout << "catch a new connection " << client_fd << std::endl;
                     if (client_fd == -1)
                     {
                         std::cout << "accepting" << std::endl;
@@ -281,9 +252,11 @@ void run(std::vector<Server> servers, epol *ep)
                     }
                     else if (ep->events[i].events & EPOLLOUT)
                     {
+
                         if (!response(ep, ep->events[i].data.fd, requests))
                         {
                             epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, ep->events[i].data.fd, NULL);
+                            // std::cout << "closing " << ep->events[i].data.fd << std::endl;
                             close(ep->events[i].data.fd);
                             std::map<int, Request>::iterator it = requests.find(ep->events[i].data.fd);
                             if (it != requests.end())

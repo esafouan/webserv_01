@@ -152,10 +152,12 @@ class Request
         int header_flag;
         int fd_file;
         std::map <std::string, std::string> myRequest;
-        // post
+        //post
+        std::vector<std::pair<std::string, std::string> > postReq;
         std::string Body;
-        std::vector< std::pair<std::string, std::string> > postReq;
-        
+        int post_flag;
+        std::ofstream ostrea;
+        std::string Post_status;
     public :
         Request(std::string req, Server server);
         Request(Request const &req);
@@ -164,6 +166,7 @@ class Request
         void print_element();
         void error_handling(Server &serv);
         ~Request();
+        void creating_file(std::vector<std::pair<std::string, std::string> > &postReq, std::string &bod);
 };
 
 // class soc
@@ -206,6 +209,10 @@ typedef struct ep
     struct epoll_event ev;
     struct epoll_event events[1];
 } epol ;
+std::string construct_res_dir_list(const std::string &contentType, size_t contentLength);
+int chunked_response(std::string target, int client_fd, std::map<int, Request> &req);
+int directorie_list(std::string target, int client_fd);
+int response_header(std::string target, int client_fd, std::map<int, Request> &req);
 void err(std::string str);
 void init(Server& ser,epol *ep);
 void fill_ser_Add(Server &ser,int i);

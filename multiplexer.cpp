@@ -64,7 +64,19 @@ std::string get_content_type(const char *path)
     }
     return "";
 }
+// std::string birng_content(std::vector<Request> req, int reciver)
+// {
+//     std::string target;
+//     for (int i = 0; i < req.size(); i++)
+//         if (req[i].fd == reciver)
+//             target = req[i].target;
+//     target = target.substr(1);
+//     if (target == "")
+//         return "";
+//     target = get_content_type(target.c_str());
 
+//     return target;
+// }
 int main(int ac, char **av)
 {
     if (ac != 2)
@@ -84,3 +96,4 @@ int main(int ac, char **av)
     run(servers,&ep);
     
 }
+
