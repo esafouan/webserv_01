@@ -2,21 +2,6 @@
 #include <cstdlib>
 #include <stdio.h>
 
-void Request::print_element()
-{
-    std::cout << method << std::endl;
-    std::cout << target << std::endl;
-    std::cout << httpVersion << std::endl;
-
-    std::map<std::string, std::string>::const_iterator it = myRequest.begin();
-    for (it; it != myRequest.end(); it++)
-    {
-        std::cout << "key = " << it->first;
-        std::cout << " value =" << it->second << std::endl;
-    }
-}
-
-
 void ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts)
 {
     size_t startPos = 0;
@@ -37,7 +22,7 @@ int check_new_lines(std::string str)
     int i = 0;
     while (str[i++])
     {
-        if(str[i] != 0)
+        if (str[i] != 0)
             return 1;
     }
     return 0;
@@ -54,62 +39,38 @@ void split_rquest_v2(std::vector<std::string> &r, std::string &req, char c)
     r.push_back(tmp);
 }
 
-
-void fill_type(std::string &meth, std::string &tar, std::string &http, std::vector<std::string> &myreq, int *fil)
+void fill_type(std::string &meth, std::string &tar, std::string &http, std::vector<std::string> &myHeaders, int *fil)
 {
-    std::vector<std::string>::iterator it = myreq.begin();
+    std::vector<std::string>::iterator it = myHeaders.begin();
     std::vector<std::string> first_line;
 
-    //split_rquest(first_line, *it, ' ');
     ft_split(*it, " ", first_line);
-    try{
+    try
+    {
         meth = first_line.at(0);
     }
-    catch (...){
+    catch (...)
+    {
         meth = "";
         *fil = 1;
     }
-    try{
+    try
+    {
         tar = first_line.at(1);
     }
-    catch (...){
+    catch (...)
+    {
         tar = "";
         *fil = 1;
     }
-    try{
+    try
+    {
         http = first_line.at(2);
     }
-    catch (...){
+    catch (...)
+    {
         http = "";
         *fil = 1;
-    }
-}
-
-void fill_map(std::map<std::string, std::string> &map, std::vector<std::string> &myreq)
-{
-    std::vector<std::string>::iterator it = myreq.begin();
-    it++;
-    std::string first;
-    std::string second;
-    for (; it != myreq.end(); it++)
-    {
-        std::vector<std::string> line;
-        if (check_new_lines(*it) != 0)
-        {
-            split_rquest_v2(line, *it, ':');
-            try
-            {
-                first = line.at(0);
-                second = line.at(1);
-            }
-            catch (...)
-            {
-                first = "";
-                second = "";
-                continue;
-            }
-            map.insert(std::pair<std::string, std::string>(first, second));
-        }
     }
 }
 
@@ -117,20 +78,6 @@ void error(std::string str)
 {
     std::cout << str << std::endl;
     exit(1);
-}
-
-int find_key(std::string key, std::map<std::string, std::string> &headers)
-{
-    std::map<std::string, std::string>::iterator it = headers.find(key);
-
-    if (it != headers.end())
-        return 1;
-    return 0;
-}
-
-std::string valueOfkey(std::string key, std::map<std::string, std::string> &headers)
-{
-    return (headers[key]);
 }
 
 int find_key(std::string key, std::vector<std::pair<std::string, std::string> > &postR)
@@ -157,11 +104,9 @@ std::string valueOfkey(std::string key, std::vector<std::pair<std::string, std::
     return "";
 }
 
-void pars_headers(std::map<std::string, std::string> &headers, std::string &stat)
+void pars_headers(std::vector<std::pair<std::string, std::string> > &headers, std::string &stat)
 {
-    std::map<std::string, std::string>::iterator it = headers.begin();
-
-    if (find_key("Transfer-Encoding", headers) && valueOfkey("Transfer-Encoding", headers) != " chunked")
+    if (find_key("Transfer-Encoding", headers) && valueOfkey("Transfer-Encoding", headers) != "chunked")
     {
         stat = "501";
         error("501");
@@ -192,7 +137,8 @@ int count_slash(std::string tar)
 void short_uri(std::string &tar, Server &serv, int *flag)
 {
     for (int i = 0; i < serv.locations.size(); i++)
-    {   if(serv.locations[i].NAME != "/")
+    {
+        if (serv.locations[i].NAME != "/")
         {
             size_t pos = tar.find(serv.locations[i].NAME);
             if (pos != std::string::npos)
@@ -223,18 +169,18 @@ void long_uri(std::string &tar, Server &serv, int *flag)
                 flag2 = 1;
             }
         }
-        if(!flag2)
+        if (!flag2)
             tar += uri[j];
-        if(j < uri.size() - 1)
+        if (j < uri.size() - 1)
             tar += "/";
-        }
+    }
 }
 
 int check_path(std::string &target, std::string &stat)
 {
     std::ifstream uri(target.c_str());
 
-    if(!uri.good())
+    if (!uri.good())
         return 0;
     return 1;
 }
@@ -263,13 +209,13 @@ void Request::error_handling(Server &serv)
     }
     else
     {
-        int flag = 0;  
-       
+        int flag = 0;
+
         if (target == "/")
             replace_slash_in_target(serv, target, &flag);
-        else if(target[0] == '/')
+        else if (target[0] == '/')
             target = target.substr(1);
-        if(access(target.c_str(), F_OK))
+        if (access(target.c_str(), F_OK))
         {
             if (count_slash(target) == 0 && target != "/")
                 short_uri(target, serv, &flag);
@@ -278,12 +224,10 @@ void Request::error_handling(Server &serv)
             if (!flag)
                 target = serv.root;
         }
-
-        
     }
-    if (find_key("Content-Length", postReq))
+    if (find_key("Content-Length", StoreHeaders))
     {
-        std::string val = valueOfkey("Content-Length", postReq);
+        std::string val = valueOfkey("Content-Length", StoreHeaders);
         int content = std::atoi(val.c_str());
 
         if (content > serv.max_body)
@@ -297,7 +241,7 @@ void Request::error_handling(Server &serv)
         status = "400";
         error("400 Bad Request");
     }
-    pars_headers(myRequest, status);
+    pars_headers(StoreHeaders, status);
 }
 
 Request::Request(Request const &req)
@@ -312,8 +256,12 @@ Request &Request::operator=(Request const &req)
     this->httpVersion = req.httpVersion;
     this->status = req.status;
     this->header_flag = req.header_flag;
-    this->myRequest = req.myRequest;
     this->fd_file = req.fd_file;
+    this->endOfrequest = req.endOfrequest;
+    this->lenght_Readed = req.lenght_Readed;
+    this->Post_status = req.Post_status;
+    this->lenght_of_content = req.lenght_of_content;
+    this->extension = req.extension;
 
     return (*this);
 }
@@ -324,14 +272,14 @@ Request::Request()
     this->fd_file = -1;
 }
 
-void fill_post_headers(std::vector<std::pair<std::string, std::string> > &postReq, std::vector<std::string> &myreq)
+void fill_headers(std::vector<std::pair<std::string, std::string> > &StoreHeaders, std::vector<std::string> &myHeaders)
 {
-    std::vector<std::string>::iterator it = myreq.begin();
+    std::vector<std::string>::iterator it = myHeaders.begin();
     std::string first;
     std::string second;
 
     it++;
-    for (; it != myreq.end(); it++)
+    for (; it != myHeaders.end(); it++)
     {
         std::vector<std::string> line;
         if (check_new_lines(*it) != 0)
@@ -348,69 +296,97 @@ void fill_post_headers(std::vector<std::pair<std::string, std::string> > &postRe
                 second = "";
                 continue;
             }
-            postReq.push_back(std::make_pair(first, second));
+            StoreHeaders.push_back(std::make_pair(first, second.erase(0, 1)));
         }
     }
 }
 
-void fill_post(std::vector<std::pair<std::string, std::string> > &postReq, std::vector<std::string> &post, std::vector<std::string> &bod)
+void fill_post_body(std::vector<std::string> &myreq, std::vector<std::string> &bod)
 {
-    if (post.size() < 2)
-        error("in post");
-    std::vector<std::string> first_part;
-
-    ft_split(post[0], "\r\n", first_part);
-    fill_post_headers(postReq, first_part);
-
-    for (int i = 1; i < post.size(); i++)
-        bod.push_back(post[i]);
+    for (int i = 1; i < myreq.size(); i++)
+        bod.push_back(myreq[i]);
 }
 
 void get_post_status(std::string &stat, std::vector<std::pair<std::string, std::string> > &postReq)
 {
-    std::cout << "--------------> "<< valueOfkey("Content-Type",postReq) << std::endl;
-    if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding",postReq) == " chunked" && 
-            find_key("Content-Type", postReq) && valueOfkey("Content-Type",postReq).find("boundary") != std::string::npos)
-            stat = "Chunked/boundary";
-    else if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding",postReq) == " chunked")
+    if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding", postReq) == "chunked" &&
+        find_key("Content-Type", postReq) && valueOfkey("Content-Type", postReq).find("boundary") != std::string::npos)
+        stat = "Chunked/boundary";
+    else if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding", postReq) == "chunked")
         stat = "chunked";
-    else if (find_key("Content-Type", postReq) && valueOfkey("Content-Type",postReq).find("boundary") != std::string::npos)
+    else if (find_key("Content-Type", postReq) && valueOfkey("Content-Type", postReq).find("boundary") != std::string::npos)
         stat = "boundary";
 
     else
         stat = "Bainary/Row";
 }
 
+std::string generate_extention(std::string content_type)
+{
+    if (content_type.find("text/css") != std::string::npos)
+        return (".css");
+    if (content_type.find("video/mp4") != std::string::npos)
+        return (".mp4");
+    if (content_type.find("text/csv") != std::string::npos)
+        return (".csv");
+    if (content_type.find("image/gif") != std::string::npos)
+        return (".gif");
+    if (content_type.find("text/html") != std::string::npos)
+        return (".html");
+    if (content_type.find("image/x-icon") != std::string::npos)
+        return (".ico");
+    if (content_type.find("image/jpeg") != std::string::npos)
+        return (".jpeg");
+    if (content_type.find("image/jpeg") != std::string::npos)
+        return (".jpg");
+    if (content_type.find("application/javascript") != std::string::npos)
+        return (".js");
+    if (content_type.find("application/json") != std::string::npos)
+        return (".json");
+    if (content_type.find("image/png") != std::string::npos)
+        return (".png");
+    if (content_type.find("application/pdf") != std::string::npos)
+        return (".pdf");
+    if (content_type.find("image/svg+xml") != std::string::npos)
+        return (".svg");
+    if (content_type.find("text/plain") != std::string::npos)
+        return (".txt");
+    return ("");
+}
 
 Request::Request(std::string req, Server server)
 {
     int filmap = 0;
     std::vector<std::string> myreq;
+    std::vector<std::string> myHeaders;
     this->status = "200 OK";
     this->header_flag = 0;
     this->fd_file = -1;
-    std::cout << req << std::endl;
-    this->endOfrequest = 0;
-    ft_split(req, "\r\n", myreq);
-    fill_type(method, target, httpVersion, myreq, &filmap);
+    this->endOfrequest = 1;
+    this->lenght_Readed = 0;
 
-    if(filmap)
+    ft_split(req, "\r\n", myHeaders);
+    fill_type(method, target, httpVersion, myHeaders, &filmap);
+
+    if (filmap)
     {
         status = "400";
         error("Bad Request");
     }
-    if (method == "GET" && !filmap)
-        fill_map(myRequest, myreq);
-    else if (method == "POST" && !filmap)
-    {
-
-        std::vector<std::string> post;
-        ft_split(req, "\r\n\r\n", post);
-        fill_post(postReq, post, Body);
-    }
+    fill_headers(StoreHeaders, myHeaders);
+    
+    // print Headers
+    // for (int i = 0; i < StoreHeaders.size(); i++)
+    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    
     Request::error_handling(server);
 
-    get_post_status(Post_status, postReq); 
+    if (method == "POST")
+        this->endOfrequest = 0;
+    
+    get_post_status(Post_status, StoreHeaders);
+    this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
+    extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 }
 
 Request::~Request()

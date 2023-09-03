@@ -26,6 +26,7 @@ std::string constructResponseHeader(const std::string &contentType, std::string 
 
     return header;
 }
+
 std::string get_content_type(const char *path)
 {
     const char *last_dot = strrchr(path, '.');

@@ -103,6 +103,7 @@ class Server
         std::vector<int >fd_sock;//client
         std::vector<int > server_sock;
         std::vector<SA_I> seraddr_s;
+
         Server()
         {
             host = "";
@@ -151,10 +152,12 @@ class Request
         std::string status;
         int header_flag;
         int fd_file;
-        std::map <std::string, std::string> myRequest;
+        int lenght_Readed;
+        int lenght_of_content;
+        std::string extension;
         //post
         int endOfrequest;
-        std::vector<std::pair<std::string, std::string> > postReq;
+        std::vector<std::pair<std::string, std::string> > StoreHeaders;
         std::vector<std::string> Body;
         int post_flag;
         std::ofstream ostrea;
@@ -204,6 +207,9 @@ class Request
 //         }
 //     
 // };
+
+std::string valueOfkey(std::string key, std::vector<std::pair<std::string, std::string> > &postR);
+
 typedef struct ep
 {
     int  ep_fd;

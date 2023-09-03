@@ -13,68 +13,106 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
 
     return header;
 }
-void handle_post_method(int client_fd, std::map<int, Request> &req)
-{
-
-}
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
     int fd, n_read;
     off_t file_size;
     std::string request = "";
-    char rec[LINE + 1];
-    
-    while ((n_read = recv(client_fd, rec, LINE + 1, 0)) > 0)
+    char rec[3];
+
+    memset(rec, 0, 2);
+
+    if (req.count(client_fd) <= 0)
     {
-        request += rec;
-        if (rec[n_read - 1] == '\n')
-            break;
-        memset(rec, 0, LINE);
-    }
-    if (n_read == 0)
-    {
-        close(client_fd);
-        epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-        std::cout << "  client close the connction   " << std::endl;
-        return;
-    }
-    else if (n_read < 0)
-    {
-        perror("read ");
-        // std::cout << client_fd << " failed" << std::endl;
-        //  err("read");
-    }
-    // mahdi request
-    if (n_read > 0)
-    {
-        int flag = 0;
-        for (int j = 0; j < servers.size(); j++)
+
+        while ((n_read = read(client_fd, rec, 1)) > 0)
         {
-            for (int i = 0; i < servers[j].fd_sock.size(); i++)
+            request += rec;
+            if (request.find("\r\n\r\n") != std::string::npos)
             {
-                if (servers[j].fd_sock[i] == client_fd)
-                {
-                    Request obj(request, servers[j]);
-                    req.insert(std::pair<int, Request>(client_fd, obj));
-                    flag = 1;
-                    break;
-                }
-                if (flag == 1)
-                    break;
+                break;
             }
-        }
-        if(req[client_fd].method == "POST")
-        {
-            handle_post_method(client_fd, req);
-        }
-        if(req[client_fd].method == "GET" || (req[client_fd].method == "POST" && req[client_fd].endOfrequest))
-        {
-            ep->ev.events = EPOLLOUT;
-            ep->ev.data.fd = client_fd;
-            epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+            memset(rec, 0, 2);
         }
 
+        if (n_read == 0)
+        {
+            close(client_fd);
+            epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+            std::cout << "  client close the connction   " << std::endl;
+            return;
+        }
+        else if (n_read < 0)
+        {
+            perror("read ");
+        }
+        // mahdi request
+        if (n_read > 0)
+        {
+            int flag = 0;
+            for (int j = 0; j < servers.size(); j++)
+            {
+                for (int i = 0; i < servers[j].fd_sock.size(); i++)
+                {
+                    if (servers[j].fd_sock[i] == client_fd)
+                    {
+                        Request obj(request, servers[j]);
+                        req.insert(std::pair<int, Request>(client_fd, obj));
+
+                        flag = 1;
+                        break;
+                    }
+                    if (flag == 1)
+                        break;
+                }
+            }
+
+            if (req[client_fd].endOfrequest)
+            {
+                ep->ev.events = EPOLLOUT;
+                ep->ev.data.fd = client_fd;
+                epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+            }
+        }
+    }
+    else
+    {
+        char rec_b[5000];
+        if (req[client_fd].Post_status == "Bainary/Row")
+        {
+            std::string name = "directorie/uploads/vid" + req[client_fd].extension;
+            std::ofstream mehdi(name.c_str(), std::ios::app | std::ios::binary);
+            if ((n_read = read(client_fd, rec_b, 4999)) > 0)
+            {
+                req[client_fd].lenght_Readed += n_read;
+                mehdi.write(rec_b, n_read);
+                if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
+                {
+                    // std::cout << "closing " << ep->events[i].data.fd << std::endl;
+                    mehdi.close();
+                    ep->ev.events = EPOLLOUT;
+                    ep->ev.data.fd = client_fd;
+                    epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+                    return;
+                }
+                memset(rec_b, 0, 4999);
+            }
+
+            if (n_read == 0)
+            {
+                close(client_fd);
+                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+                std::cout << "  client close the connction   " << std::endl;
+                return;
+            }
+            else if (n_read < 0)
+            {
+                perror("read ");
+                // std::cout << client_fd << " failed" << std::endl;
+                //  err("read");
+            }
+        }
     }
     return;
 }
@@ -102,17 +140,16 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     if (dir)
     {
         struct dirent *entry;
-            
+
         while ((entry = readdir(dir)) != NULL)
         {
             std::string entryName = entry->d_name;
             haha = get_last(directoryPath) + "/";
-          
 
             if (entryName != "." && entryName != "..")
             {
-                std::cout <<"url =" <<directoryPath << "/" <<entryName << std::endl;
-                htmlStream << "<p><a href=\"" <<  haha  <<entryName << "\">" << entryName << "</a></p>\n";
+                std::cout << "url =" << directoryPath << "/" << entryName << std::endl;
+                htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
             }
         }
         closedir(dir);
@@ -153,7 +190,25 @@ std::string generateDirectoryListing(const std::string &directoryPath)
 //     htmlStream << "</body></html>\n";
 //     return htmlStream.str();
 // }
+std::string mama(const std::string &contentType, size_t contentLength)
+{
+    std::string header;
 
+    // Status line
+    header += "HTTP/1.1 200 OK\r\n";
+
+    // Content-Type header
+    header += "Content-Type: " + contentType + "\r\n";
+    // Content-Length header
+    std::stringstream contentLengthStream;
+    contentLengthStream << contentLength;
+    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
+
+    // Blank line
+    header += "\r\n";
+
+    return header;
+}
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -172,9 +227,31 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         }
         else if (req[client_fd].header_flag == 1)
         {
-            return(chunked_response(target, client_fd, req));  
+            return (chunked_response(target, client_fd, req));
         }
+    }
+    else if (req[client_fd].endOfrequest == 0 && req[client_fd].method == "POST")
+    {
+        size_t file_size;
+        std::string file_open = "directorie/succes.html";
+        int fd_file = open(file_open.c_str(), O_RDONLY);
+        file_size = lseek(fd_file, 0, SEEK_END);
+        lseek(fd_file, 0, SEEK_SET);
+        std::string response_header = mama("text/html", file_size);
+        write(client_fd, response_header.c_str(), response_header.size());
+        const size_t buffer_size = 1024;
+        char buffer[buffer_size];
+        ssize_t bytes_read;
 
+        if((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+        {
+            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
+            if (bytes_sent == -1)
+            {
+                err("Error sending data1");
+            }
+        }
+        close(fd_file);
     }
     return 0;
 }
@@ -251,8 +328,6 @@ void run(std::vector<Server> servers, epol *ep)
                     ep->ev.events = EPOLLIN;
                     ep->ev.data.fd = client_fd;
                     servers[j].fd_sock.push_back(client_fd);
-                    // std::cout << "acepting"
-                    //           << "client = " << client_fd << " from serve " << j << std::endl;
                     if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, client_fd, &ep->ev) == -1)
                     {
                         std::cout << "epoll_ctl" << std::endl;
@@ -264,8 +339,6 @@ void run(std::vector<Server> servers, epol *ep)
             {
                 if (std::find(servers[j].fd_sock.begin(), servers[j].fd_sock.end(), ep->events[i].data.fd) != servers[j].fd_sock.end())
                 {
-                    // std::cout << "request from "
-                    //           << "client = " << ep->events[i].data.fd << " from serve " << j << std::endl;
                     if (ep->events[i].events & EPOLLIN) ////////request
                     {
                         request_part(servers, ep, ep->events[i].data.fd, requests);
