@@ -148,7 +148,7 @@ int max_body(std::string body)
     while (body[++i])
         if(!isdigit(body[i]))
             exit(1);
-    if(i > 4 || i == 0)
+    if(i > 8 || i == 0)
         exit(1);
     return atoi(body.c_str());
 }

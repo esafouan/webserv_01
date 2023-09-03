@@ -3,6 +3,10 @@
 int response_header(std::string target, int client_fd, std::map<int, Request> &req)
 {
     std::string target_to_send = get_content_type(target.c_str());
+    //std::cout << target << std::endl;
+    if(target[0] == '/')
+        target = target.substr(1);
+    //std::cout << target  << std::endl;
     req[client_fd].fd_file = open(target.c_str(), O_RDONLY);
     std::string response_header = constructResponseHeader(target_to_send, req[client_fd].status);
     send(client_fd, response_header.c_str(), response_header.size(), 0);
@@ -14,6 +18,9 @@ int directorie_list(std::string target, int client_fd)
     std::string dir;
     off_t file_size;
     std::string response_header;
+    //std::cout <<"resp = " <<target << std::endl;
+    if(target[0] == '/')
+        target = target.substr(1);
     dir = generateDirectoryListing(target);
     file_size = dir.size();
     response_header = construct_res_dir_list("text/html", file_size);

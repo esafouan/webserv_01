@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <iostream>
 #include <fstream>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
@@ -139,7 +140,6 @@ class Server
         }
 };
 
-
 // mahdi
 
 class Request 
@@ -153,8 +153,9 @@ class Request
         int fd_file;
         std::map <std::string, std::string> myRequest;
         //post
+        int endOfrequest;
         std::vector<std::pair<std::string, std::string> > postReq;
-        std::string Body;
+        std::vector<std::string> Body;
         int post_flag;
         std::ofstream ostrea;
         std::string Post_status;

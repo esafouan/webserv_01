@@ -64,6 +64,7 @@ std::string get_content_type(const char *path)
     }
     return "";
 }
+
 // std::string birng_content(std::vector<Request> req, int reciver)
 // {
 //     std::string target;
@@ -77,6 +78,7 @@ std::string get_content_type(const char *path)
 
 //     return target;
 // }
+
 int main(int ac, char **av)
 {
     if (ac != 2)

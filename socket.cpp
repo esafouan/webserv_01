@@ -13,12 +13,18 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
 
     return header;
 }
+void handle_post_method(int client_fd, std::map<int, Request> &req)
+{
+
+}
+
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
     int fd, n_read;
     off_t file_size;
     std::string request = "";
     char rec[LINE + 1];
+    
     while ((n_read = recv(client_fd, rec, LINE + 1, 0)) > 0)
     {
         request += rec;
@@ -58,12 +64,21 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     break;
             }
         }
-        ep->ev.events = EPOLLOUT;
-        ep->ev.data.fd = client_fd;
-        epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+        if(req[client_fd].method == "POST")
+        {
+            handle_post_method(client_fd, req);
+        }
+        if(req[client_fd].method == "GET" || (req[client_fd].method == "POST" && req[client_fd].endOfrequest))
+        {
+            ep->ev.events = EPOLLOUT;
+            ep->ev.data.fd = client_fd;
+            epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+        }
+
     }
     return;
 }
+
 std::string get_last(std::string path)
 {
     size_t h = 0;
@@ -75,6 +90,7 @@ std::string get_last(std::string path)
     }
     return path;
 }
+
 std::string generateDirectoryListing(const std::string &directoryPath)
 {
     std::stringstream htmlStream;
@@ -82,16 +98,21 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
     std::string haha = "";
     DIR *dir = opendir(directoryPath.c_str());
+
     if (dir)
     {
         struct dirent *entry;
+            
         while ((entry = readdir(dir)) != NULL)
         {
             std::string entryName = entry->d_name;
             haha = get_last(directoryPath) + "/";
+          
+
             if (entryName != "." && entryName != "..")
             {
-                htmlStream << "<p><a href=\"" << haha + entryName << "\">" << entryName << "</a></p>\n";
+                std::cout <<"url =" <<directoryPath << "/" <<entryName << std::endl;
+                htmlStream << "<p><a href=\"" <<  haha  <<entryName << "\">" << entryName << "</a></p>\n";
             }
         }
         closedir(dir);
