@@ -225,18 +225,18 @@ void Request::error_handling(Server &serv)
                 target = serv.root;
         }
     }
-    if (find_key("Content-Length", StoreHeaders))
-    {
-        std::string val = valueOfkey("Content-Length", StoreHeaders);
-        int content = std::atoi(val.c_str());
+    // if (find_key("Content-Length", StoreHeaders))
+    // {
+    //     std::string val = valueOfkey("Content-Length", StoreHeaders);
+    //     int content = std::atoi(val.c_str());
 
-        if (content > serv.max_body)
-        {
-            status = "413";
-            error("413 Request Entity Too Large");
-        }
-    }
-    else if (httpVersion != "HTTP/1.1")
+    //     if (content > serv.max_body)
+    //     {
+    //         status = "413";
+    //         error("413 Request Entity Too Large");
+    //     }
+    // }
+    if (httpVersion != "HTTP/1.1")
     {
         status = "400";
         error("400 Bad Request");
@@ -262,6 +262,12 @@ Request &Request::operator=(Request const &req)
     this->Post_status = req.Post_status;
     this->lenght_of_content = req.lenght_of_content;
     this->extension = req.extension;
+    this-> outfile_name = req.outfile_name;
+    //this->outfile = req.outfile;
+
+    this->outfile.copyfmt(req.outfile);
+    this->outfile.clear();
+    outfile.open(req.outfile_name.c_str());
 
     return (*this);
 }
@@ -275,7 +281,7 @@ Request::Request()
 void fill_headers(std::vector<std::pair<std::string, std::string> > &StoreHeaders, std::vector<std::string> &myHeaders)
 {
     std::vector<std::string>::iterator it = myHeaders.begin();
-    std::string first;
+    std::string first; 
     std::string second;
 
     it++;
@@ -307,18 +313,29 @@ void fill_post_body(std::vector<std::string> &myreq, std::vector<std::string> &b
         bod.push_back(myreq[i]);
 }
 
-void get_post_status(std::string &stat, std::vector<std::pair<std::string, std::string> > &postReq)
+void Request::get_post_status()
 {
-    if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding", postReq) == "chunked" &&
-        find_key("Content-Type", postReq) && valueOfkey("Content-Type", postReq).find("boundary") != std::string::npos)
-        stat = "Chunked/boundary";
-    else if (find_key("Transfer-Encoding", postReq) && valueOfkey("Transfer-Encoding", postReq) == "chunked")
-        stat = "chunked";
-    else if (find_key("Content-Type", postReq) && valueOfkey("Content-Type", postReq).find("boundary") != std::string::npos)
-        stat = "boundary";
+    if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked" &&
+        find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
+        Post_status = "Chunked/boundary";
+    else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")
+    {
+        outfile_name = get_current_time() + ".txt";
+        outfile.open(outfile_name.c_str(), std::ios::binary);
+        Post_status = "chunked";
+    }
+        
+    else if (find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
+        Post_status = "boundary";
 
     else
-        stat = "Bainary/Row";
+    {
+        outfile_name = "directorie/" + get_current_time() + extension;
+        outfile.open(outfile_name.c_str(),  std::ios::binary);
+
+        Post_status = "Bainary/Row";
+    }
+        
 }
 
 std::string generate_extention(std::string content_type)
@@ -365,6 +382,7 @@ Request::Request(std::string req, Server server)
     this->endOfrequest = 1;
     this->lenght_Readed = 0;
 
+    
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
 
@@ -376,17 +394,20 @@ Request::Request(std::string req, Server server)
     fill_headers(StoreHeaders, myHeaders);
     
     // print Headers
-    // for (int i = 0; i < StoreHeaders.size(); i++)
-    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    //  for (int i = 0; i < StoreHeaders.size(); i++)
+    //      std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     
     Request::error_handling(server);
 
     if (method == "POST")
         this->endOfrequest = 0;
     
-    get_post_status(Post_status, StoreHeaders);
+   
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
+    //std::cout << extension << std::endl;
+    if (method == "POST")
+        Request::get_post_status();
 }
 
 Request::~Request()

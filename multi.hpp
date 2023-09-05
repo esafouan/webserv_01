@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ctime>
 #include <cstring>
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -29,6 +30,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+
 #define SA_I struct sockaddr_in
 
 #define MAX_REQUEST_SIZE 2048
@@ -154,6 +156,13 @@ class Request
         int fd_file;
         int lenght_Readed;
         int lenght_of_content;
+
+        std::ofstream outfile;
+        std::string outfile_name;
+
+        std::ifstream infile;
+        std::string infile_name;
+
         std::string extension;
         //post
         int endOfrequest;
@@ -171,6 +180,7 @@ class Request
         void error_handling(Server &serv);
         ~Request();
         void creating_file(std::vector<std::pair<std::string, std::string> > &postReq, std::string &bod);
+        void get_post_status();
 };
 
 // class soc
@@ -216,6 +226,7 @@ typedef struct ep
     struct epoll_event ev;
     struct epoll_event events[1];
 } epol ;
+std::string get_current_time();
 std::string construct_res_dir_list(const std::string &contentType, size_t contentLength);
 int chunked_response(std::string target, int client_fd, std::map<int, Request> &req);
 int directorie_list(std::string target, int client_fd);

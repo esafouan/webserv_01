@@ -1,5 +1,4 @@
 #include "multi.hpp"
-
 std::string construct_res_dir_list(const std::string &contentType, size_t contentLength)
 {
     std::string header;
@@ -13,86 +12,6 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
     header += "\r\n";
 
     return header;
-}
-
-int saad(std::string s)
-{
-    std::ifstream file(s.c_str(), std::ios::binary);
-
-    if (!file)
-    {
-        std::cerr << "Failed to open file." << std::endl;
-        return 1;
-    }
-
-    // Determine the file size
-    file.seekg(0, std::ios::end);
-    std::streampos fileSize = file.tellg();
-    std::streampos originalPos = file.tellg();
-    // Move the file pointer back by 10 characters (assuming there are at least 10 characters in the file)
-    file.seekg(-10, std::ios::end);
-
-    // Read the last 10 characters
-    char buffer[11]; // 10 characters + null-terminator
-    file.read(buffer, 10);
-
-    // Null-terminate the buffer
-    buffer[10] = '\0';
-
-    // Print the last 10 characters
-    std::string str(buffer);
-
-    if (str.find("0\r\n\r\n") != str.npos)
-    {
-        file.close();
-        return 0;
-    }
-    file.close();
-
-    return 1;
-}
-
-
-std::string get_current_time()
-{
-    std::time_t currentTime;
-    std::time(&currentTime);
-
-    // Convert to a string and print
-    char timeString[100]; // Adjust the buffer size as needed
-    std::strftime(timeString, sizeof(timeString), "%Y-%m-%d-%H:%M:%S", std::localtime(&currentTime));
-    std::string time(timeString);
-
-    return (time);
-}
-
-void process_file(std::string s, std::string extension)
-{
-    std::ifstream file(s.c_str(), std::ios::binary);
-    std::string name = "directorie/" + get_current_time() + extension;
-    std::ofstream uploaded_file(name.c_str(), std::ios::binary);
-
-    while (1)
-    {
-        char *stat;
-        std::string size;
-        size_t n_read;
-        std::getline(file, size);
-
-        if (size.empty() || size == "0\r\n")
-            break;
-        size_t chunk_size = std::strtol(size.c_str(), &stat, 16);
-        if (!chunk_size)
-            break;
-        char buff[chunk_size + 1];
-        char separator[2];
-        file.read(buff, chunk_size);
-        file.read(separator, 2);
-        uploaded_file.write(buff, chunk_size);
-    }
-    file.close();
-    uploaded_file.close();
-    std::remove(s.c_str());
 }
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
@@ -162,50 +81,17 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         char rec_b[5000];
         if (req[client_fd].Post_status == "Bainary/Row")
         {
+            std::string name = "directorie/uploads/vid" + req[client_fd].extension;
+            std::ofstream mehdi(name.c_str(), std::ios::app | std::ios::binary);
             if ((n_read = read(client_fd, rec_b, 4999)) > 0)
             {
                 req[client_fd].lenght_Readed += n_read;
-                req[client_fd].outfile.write(rec_b, n_read);
+                mehdi.write(rec_b, n_read);
                 if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
                 {
                     // std::cout << "closing " << ep->events[i].data.fd << std::endl;
-                    req[client_fd].outfile.close();
+                    mehdi.close();
                     ep->ev.events = EPOLLOUT;
-                    ep->ev.data.fd = client_fd;
-                    epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
-                    return;
-                }
-                memset(rec_b, 0, 4999);
-            }
-
-            if (n_read == 0)
-            {
-                close(client_fd);
-                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-                std::cout << "  client close the connction   " << std::endl;
-                return;
-            }
-            else if (n_read < 0)
-            {
-                perror("read ");
-                // std::cout << client_fd << " failed" << std::endl;
-                //  err("read");
-            }
-        }
-        else if (req[client_fd].Post_status == "chunked")
-        {
-            // std::ofstream saad1("ss.txt", std::ios::app | std::ios::binary);
-
-            if ((n_read = read(client_fd, rec_b, 4999)) > 0)
-            {    
-                req[client_fd].outfile.write(rec_b, n_read);
-                //std::string str(rec_b);
-                if (!saad(req[client_fd].outfile_name))
-                {
-                    std::cout << "here "<< std::endl;
-                    process_file(req[client_fd].outfile_name, req[client_fd].extension);
-                    // std::cout << "closing " << ep->events[i].data.fd << std::endl;
-                    req[client_fd].outfile.close();
                     ep->ev.data.fd = client_fd;
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
                     return;
@@ -262,7 +148,7 @@ std::string generateDirectoryListing(const std::string &directoryPath)
 
             if (entryName != "." && entryName != "..")
             {
-                // std::cout << "url =" << directoryPath << "/" << entryName << std::endl;
+                std::cout << "url =" << directoryPath << "/" << entryName << std::endl;
                 htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
             }
         }
@@ -276,7 +162,6 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     htmlStream << "</body></html>\n";
     return htmlStream.str();
 }
-
 // std::string generateDirectoryListing(const std::string &directoryPath)
 // {
 //     std::stringstream htmlStream;
@@ -310,11 +195,10 @@ std::string mama(const std::string &contentType, size_t contentLength)
     std::string header;
 
     // Status line
-    header += "HTTP/1.1 302 OK\r\n";
+    header += "HTTP/1.1 200 OK\r\n";
 
     // Content-Type header
     header += "Content-Type: " + contentType + "\r\n";
-    //    header += "Location: /directorie/succes.html\r\n";
     // Content-Length header
     std::stringstream contentLengthStream;
     contentLengthStream << contentLength;
@@ -325,7 +209,6 @@ std::string mama(const std::string &contentType, size_t contentLength)
 
     return header;
 }
-
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -359,7 +242,8 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         const size_t buffer_size = 1024;
         char buffer[buffer_size];
         ssize_t bytes_read;
-        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+
+        if((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
         {
             ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
             if (bytes_sent == -1)
