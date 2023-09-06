@@ -163,6 +163,8 @@ class Request
         std::ifstream infile;
         std::string infile_name;
 
+        std::string boundary_separater;
+
         std::string extension;
         //post
         int endOfrequest;

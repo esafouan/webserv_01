@@ -264,7 +264,7 @@ Request &Request::operator=(Request const &req)
     this->extension = req.extension;
     this-> outfile_name = req.outfile_name;
     //this->outfile = req.outfile;
-
+    this->boundary_separater = req.boundary_separater;
     this->outfile.copyfmt(req.outfile);
     this->outfile.clear();
     outfile.open(req.outfile_name.c_str());
@@ -313,6 +313,18 @@ void fill_post_body(std::vector<std::string> &myreq, std::vector<std::string> &b
         bod.push_back(myreq[i]);
 }
 
+std::string get_separater(std::string val)
+{
+    std::string sep = "";
+
+    size_t pos = val.find("=");
+
+    if (pos != std::string::npos)
+        sep = val.substr(pos + 1);
+    sep = "--" + sep ;
+    return sep;
+}
+
 void Request::get_post_status()
 {
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked" &&
@@ -326,11 +338,17 @@ void Request::get_post_status()
     }
         
     else if (find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
+    {
+        outfile_name = get_current_time() + ".txt";
+        outfile.open(outfile_name.c_str(), std::ios::binary);
         Post_status = "boundary";
+        boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
+        // std::cout << "saad ->"<< boundary_separater << std::endl;
+    }
 
     else
     {
-        outfile_name = "directorie/" + get_current_time() + extension;
+        outfile_name = "directorie/upload/" + get_current_time() + extension;
         outfile.open(outfile_name.c_str(),  std::ios::binary);
 
         Post_status = "Bainary/Row";
@@ -342,31 +360,31 @@ std::string generate_extention(std::string content_type)
 {
     if (content_type.find("text/css") != std::string::npos)
         return (".css");
-    if (content_type.find("video/mp4") != std::string::npos)
+    else if (content_type.find("video/mp4") != std::string::npos)
         return (".mp4");
-    if (content_type.find("text/csv") != std::string::npos)
+    else if (content_type.find("text/csv") != std::string::npos)
         return (".csv");
-    if (content_type.find("image/gif") != std::string::npos)
+    else if (content_type.find("image/gif") != std::string::npos)
         return (".gif");
-    if (content_type.find("text/html") != std::string::npos)
+    else if (content_type.find("text/html") != std::string::npos)
         return (".html");
-    if (content_type.find("image/x-icon") != std::string::npos)
+    else if (content_type.find("image/x-icon") != std::string::npos)
         return (".ico");
-    if (content_type.find("image/jpeg") != std::string::npos)
+    else if (content_type.find("image/jpeg") != std::string::npos)
         return (".jpeg");
-    if (content_type.find("image/jpeg") != std::string::npos)
+    else if (content_type.find("image/jpeg") != std::string::npos)
         return (".jpg");
-    if (content_type.find("application/javascript") != std::string::npos)
+    else if (content_type.find("application/javascript") != std::string::npos)
         return (".js");
-    if (content_type.find("application/json") != std::string::npos)
+    else if (content_type.find("application/json") != std::string::npos)
         return (".json");
-    if (content_type.find("image/png") != std::string::npos)
+    else if (content_type.find("image/png") != std::string::npos)
         return (".png");
-    if (content_type.find("application/pdf") != std::string::npos)
+    else if (content_type.find("application/pdf") != std::string::npos)
         return (".pdf");
-    if (content_type.find("image/svg+xml") != std::string::npos)
+    else if (content_type.find("image/svg+xml") != std::string::npos)
         return (".svg");
-    if (content_type.find("text/plain") != std::string::npos)
+    else if (content_type.find("text/plain") != std::string::npos)
         return (".txt");
     return ("");
 }
@@ -394,8 +412,8 @@ Request::Request(std::string req, Server server)
     fill_headers(StoreHeaders, myHeaders);
     
     // print Headers
-    //  for (int i = 0; i < StoreHeaders.size(); i++)
-    //      std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    // for (int i = 0; i < StoreHeaders.size(); i++)
+    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     
     Request::error_handling(server);
 

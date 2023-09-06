@@ -28,16 +28,15 @@ int saad(std::string s)
     // Determine the file size
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
-    std::streampos originalPos = file.tellg();
     // Move the file pointer back by 10 characters (assuming there are at least 10 characters in the file)
-    file.seekg(-10, std::ios::end);
+    file.seekg(-5, std::ios::end);
 
     // Read the last 10 characters
-    char buffer[11]; // 10 characters + null-terminator
-    file.read(buffer, 10);
+    char buffer[6]; // 10 characters + null-terminator
+    file.read(buffer, 5);
 
     // Null-terminate the buffer
-    buffer[10] = '\0';
+    buffer[5] = '\0';
 
     // Print the last 10 characters
     std::string str(buffer);
@@ -51,7 +50,6 @@ int saad(std::string s)
 
     return 1;
 }
-
 
 std::string get_current_time()
 {
@@ -69,7 +67,7 @@ std::string get_current_time()
 void process_file(std::string s, std::string extension)
 {
     std::ifstream file(s.c_str(), std::ios::binary);
-    std::string name = "directorie/" + get_current_time() + extension;
+    std::string name = "directorie/upload/" + get_current_time() + extension;
     std::ofstream uploaded_file(name.c_str(), std::ios::binary);
 
     while (1)
@@ -93,6 +91,73 @@ void process_file(std::string s, std::string extension)
     file.close();
     uploaded_file.close();
     std::remove(s.c_str());
+}
+std::string get_extension(std::string content_type)
+{
+    if (content_type.find("text/css") != std::string::npos)
+        return (".css");
+    else if (content_type.find("video/mp4") != std::string::npos)
+        return (".mp4");
+    else if (content_type.find("audio/mp4") != std::string::npos)
+        return (".mp4");
+    else if (content_type.find("text/csv") != std::string::npos)
+        return (".csv");
+    else if (content_type.find("image/gif") != std::string::npos)
+        return (".gif");
+    else if (content_type.find("text/html") != std::string::npos)
+        return (".html");
+    else if (content_type.find("image/x-icon") != std::string::npos)
+        return (".ico");
+    else if (content_type.find("image/jpeg") != std::string::npos)
+        return (".jpeg");
+    else if (content_type.find("image/jpeg") != std::string::npos)
+        return (".jpg");
+    else if (content_type.find("application/javascript") != std::string::npos)
+        return (".js");
+    else if (content_type.find("application/json") != std::string::npos)
+        return (".json");
+    else if (content_type.find("image/png") != std::string::npos)
+        return (".png");
+    else if (content_type.find("application/pdf") != std::string::npos)
+        return (".pdf");
+    else if (content_type.find("image/svg+xml") != std::string::npos)
+        return (".svg");
+    else if (content_type.find("text/plain") != std::string::npos)
+        return (".txt");
+    return ("");
+}
+
+void process_file_boundary(std::string filename, std::string separater)
+{
+    std::ifstream boundryfile(filename.c_str());
+    std::ofstream myfile;
+    std::string buffer;
+    size_t pos;
+
+    //std::cout << "sok sep = "<< separater << std::endl;
+    while (std::getline(boundryfile, buffer))
+    {
+        if ((pos = buffer.find("Content-Type")) != buffer.npos)
+            myfile.open(("directorie/upload/" + get_current_time() + get_extension(buffer.substr(pos + 1))).c_str());  
+        else if (buffer == (separater + "--" + "\r"))
+        {
+            
+            myfile.close();
+            break;
+        }
+        else if (buffer == separater + "\r")
+        {
+            myfile.close();
+        }
+        else if (buffer != "\r\n" && buffer != "\r")
+        {
+            myfile << buffer + "\n";
+        }
+         
+    }
+    boundryfile.close();
+    std::remove(filename.c_str());
+
 }
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
@@ -159,11 +224,15 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
     }
     else
     {
-        char rec_b[5000];
+
+        char rec_b[2000];
+        memset(rec_b, 0, 1999);
         if (req[client_fd].Post_status == "Bainary/Row")
         {
-            if ((n_read = read(client_fd, rec_b, 4999)) > 0)
+
+            if ((n_read = read(client_fd, rec_b, 1999)) > 0)
             {
+
                 req[client_fd].lenght_Readed += n_read;
                 req[client_fd].outfile.write(rec_b, n_read);
                 if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
@@ -175,7 +244,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
                     return;
                 }
-                memset(rec_b, 0, 4999);
+                memset(rec_b, 0, 1999);
             }
 
             if (n_read == 0)
@@ -192,27 +261,25 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 //  err("read");
             }
         }
-        else if (req[client_fd].Post_status == "chunked")
+        
+        else if (req[client_fd].Post_status == "chunked") // msdmfsdmnsdmkcj
         {
             // std::ofstream saad1("ss.txt", std::ios::app | std::ios::binary);
-
-            if ((n_read = read(client_fd, rec_b, 4999)) > 0)
-            {    
+            if ((n_read = read(client_fd, rec_b, 1999)) > 0)
+            {
                 req[client_fd].outfile.write(rec_b, n_read);
-                //std::string str(rec_b);
+                req[client_fd].outfile.flush();
                 if (!saad(req[client_fd].outfile_name))
                 {
-                    std::cout << "here "<< std::endl;
                     process_file(req[client_fd].outfile_name, req[client_fd].extension);
-                    // std::cout << "closing " << ep->events[i].data.fd << std::endl;
                     req[client_fd].outfile.close();
+                    ep->ev.events = EPOLLOUT;
                     ep->ev.data.fd = client_fd;
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
                     return;
                 }
-                memset(rec_b, 0, 4999);
+                memset(rec_b, 0, 1999);
             }
-
             if (n_read == 0)
             {
                 close(client_fd);
@@ -221,11 +288,40 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 return;
             }
             else if (n_read < 0)
-            {
                 perror("read ");
-                // std::cout << client_fd << " failed" << std::endl;
-                //  err("read");
+        }
+
+        else if (req[client_fd].Post_status == "boundary")
+        {
+            // std::ofstream saad1("ss.txt", std::ios::app | std::ios::binary);
+            if ((n_read = read(client_fd, rec_b, 1999)) > 0)
+            {
+                req[client_fd].outfile.write(rec_b, n_read);
+                req[client_fd].outfile.flush();
+                std::string str;
+                str.append(rec_b, n_read);
+                if (str.find(req[client_fd].boundary_separater + "--") != str.npos)
+                {
+                    
+                    process_file_boundary(req[client_fd].outfile_name, req[client_fd].boundary_separater);
+
+                    req[client_fd].outfile.close();
+                    ep->ev.events = EPOLLOUT;
+                    ep->ev.data.fd = client_fd;
+                    epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+                    return;
+                }
+                memset(rec_b, 0, 1999);
             }
+            if (n_read == 0)
+            {
+                close(client_fd);
+                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+                std::cout << "  client close the connction   " << std::endl;
+                return;
+            }
+            else if (n_read < 0)
+                perror("read ");
         }
     }
     return;
@@ -363,9 +459,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         {
             ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
             if (bytes_sent == -1)
-            {
                 err("Error sending data1");
-            }
         }
         close(fd_file);
     }
@@ -385,12 +479,15 @@ uint32_t ipToUint32(std::string &ip)
 
     return (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 }
+
 void fill_ser_Add(Server &ser, int i)
 {
     ser.seraddr_s[i].sin_family = AF_INET;
     ser.seraddr_s[i].sin_addr.s_addr = htonl(ipToUint32(ser.host));
+    // ser.seraddr_s[i].sin_addr.s_addr = INADDR_ANY;
     ser.seraddr_s[i].sin_port = htons(ser.listen[i]);
 }
+
 void init(Server &ser, epol *ep)
 {
     for (int i = 0; i < ser.listen.size(); i++)
@@ -462,9 +559,9 @@ void run(std::vector<Server> servers, epol *ep)
                     }
                     else if (ep->events[i].events & EPOLLOUT)
                     {
-
                         if (!response(ep, ep->events[i].data.fd, requests))
                         {
+
                             epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, ep->events[i].data.fd, NULL);
                             // std::cout << "closing " << ep->events[i].data.fd << std::endl;
                             close(ep->events[i].data.fd);
