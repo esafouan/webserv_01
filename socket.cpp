@@ -64,34 +64,7 @@ std::string get_current_time()
     return (time);
 }
 
-void process_file(std::string s, std::string extension)
-{
-    std::ifstream file(s.c_str(), std::ios::binary);
-    std::string name = "directorie/upload/" + get_current_time() + extension;
-    std::ofstream uploaded_file(name.c_str(), std::ios::binary);
 
-    while (1)
-    {
-        char *stat;
-        std::string size;
-        size_t n_read;
-        std::getline(file, size);
-
-        if (size.empty() || size == "0\r\n")
-            break;
-        size_t chunk_size = std::strtol(size.c_str(), &stat, 16);
-        if (!chunk_size)
-            break;
-        char buff[chunk_size + 1];
-        char separator[2];
-        file.read(buff, chunk_size);
-        file.read(separator, 2);
-        uploaded_file.write(buff, chunk_size);
-    }
-    file.close();
-    uploaded_file.close();
-    std::remove(s.c_str());
-}
 std::string get_extension(std::string content_type)
 {
     if (content_type.find("text/css") != std::string::npos)
@@ -160,6 +133,43 @@ void process_file_boundary(std::string filename, std::string separater)
 
 }
 
+void process_file(std::string s, std::string extension, std::string separater, int type)
+{
+    std::ifstream file(s.c_str(), std::ios::binary);
+    std::string name;
+    
+    if(type)
+        name = "directorie/upload/" + get_current_time() + extension;
+    else
+        name = "directorie/" + get_current_time() + ".txt";
+
+    std::ofstream uploaded_file(name.c_str(), std::ios::binary);
+
+    while (1)
+    {
+        char *stat;
+        std::string size;
+        size_t n_read;
+        std::getline(file, size);
+
+        if (size.empty() || size == "0\r\n")
+            break;
+        size_t chunk_size = std::strtol(size.c_str(), &stat, 16);
+        if (!chunk_size)
+            break;
+        char buff[chunk_size + 1];
+        char separator[2];
+        file.read(buff, chunk_size);
+        file.read(separator, 2);
+        uploaded_file.write(buff, chunk_size);
+    }
+    file.close();
+    uploaded_file.close();
+    std::remove(s.c_str());
+    if(!type)
+        process_file_boundary(name, separater);
+}
+
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
     int fd, n_read;
@@ -224,8 +234,8 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
     }
     else
     {
-
         char rec_b[2000];
+
         memset(rec_b, 0, 1999);
         if (req[client_fd].Post_status == "Bainary/Row")
         {
@@ -269,9 +279,12 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             {
                 req[client_fd].outfile.write(rec_b, n_read);
                 req[client_fd].outfile.flush();
-                if (!saad(req[client_fd].outfile_name))
+                std::string str;
+                str.append(rec_b,n_read);
+
+                if (str.find("0\r\n\r\n") != str.npos)
                 {
-                    process_file(req[client_fd].outfile_name, req[client_fd].extension);
+                    process_file(req[client_fd].outfile_name, req[client_fd].extension, "", 1);
                     req[client_fd].outfile.close();
                     ep->ev.events = EPOLLOUT;
                     ep->ev.data.fd = client_fd;
@@ -322,6 +335,37 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             }
             else if (n_read < 0)
                 perror("read ");
+        }
+
+        else if (req[client_fd].Post_status == "Chunked/boundary")
+        {
+           if ((n_read = read(client_fd, rec_b, 1999)) > 0)
+            {
+                req[client_fd].outfile.write(rec_b, n_read);
+                req[client_fd].outfile.flush();
+                std::string str;
+                str.append(rec_b, n_read);
+                if (str.find("0\r\n\r\n") != str.npos)
+                {
+                        process_file(req[client_fd].outfile_name, "", req[client_fd].boundary_separater, 0);
+                        std::cout << str << std::endl;
+                        req[client_fd].outfile.close();
+                        ep->ev.events = EPOLLOUT;
+                        ep->ev.data.fd = client_fd;
+                        epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+                        return ;
+                }
+                memset(rec_b, 0, 1999);
+            }
+            if (n_read == 0)
+            {
+                close(client_fd);
+                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+                std::cout << "  client close the connction   " << std::endl;
+                return;
+            }
+            else if (n_read < 0)
+                perror("read ");  
         }
     }
     return;

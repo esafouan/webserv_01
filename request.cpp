@@ -329,7 +329,13 @@ void Request::get_post_status()
 {
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked" &&
         find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
+    {
         Post_status = "Chunked/boundary";
+        outfile_name = get_current_time() + ".txt";
+        outfile.open(outfile_name.c_str(), std::ios::binary);
+        boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
+    }
+       
     else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")
     {
         outfile_name = get_current_time() + ".txt";
@@ -343,7 +349,6 @@ void Request::get_post_status()
         outfile.open(outfile_name.c_str(), std::ios::binary);
         Post_status = "boundary";
         boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
-        // std::cout << "saad ->"<< boundary_separater << std::endl;
     }
 
     else
