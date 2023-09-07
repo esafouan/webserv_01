@@ -15,42 +15,6 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
     return header;
 }
 
-int saad(std::string s)
-{
-    std::ifstream file(s.c_str(), std::ios::binary);
-
-    if (!file)
-    {
-        std::cerr << "Failed to open file." << std::endl;
-        return 1;
-    }
-
-    // Determine the file size
-    file.seekg(0, std::ios::end);
-    std::streampos fileSize = file.tellg();
-    // Move the file pointer back by 10 characters (assuming there are at least 10 characters in the file)
-    file.seekg(-5, std::ios::end);
-
-    // Read the last 10 characters
-    char buffer[6]; // 10 characters + null-terminator
-    file.read(buffer, 5);
-
-    // Null-terminate the buffer
-    buffer[5] = '\0';
-
-    // Print the last 10 characters
-    std::string str(buffer);
-
-    if (str.find("0\r\n\r\n") != str.npos)
-    {
-        file.close();
-        return 0;
-    }
-    file.close();
-
-    return 1;
-}
-
 std::string get_current_time()
 {
     std::time_t currentTime;
@@ -107,7 +71,6 @@ void process_file_boundary(std::string filename, std::string separater)
     std::string buffer;
     size_t pos;
 
-    //std::cout << "sok sep = "<< separater << std::endl;
     while (std::getline(boundryfile, buffer))
     {
         if ((pos = buffer.find("Content-Type")) != buffer.npos)
@@ -181,29 +144,13 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
 
     if (req.count(client_fd) <= 0)
     {
-
         while ((n_read = read(client_fd, rec, 1)) > 0)
         {
             request += rec;
             if (request.find("\r\n\r\n") != std::string::npos)
-            {
-                break;
-            }
+                break ;
             memset(rec, 0, 2);
         }
-
-        if (n_read == 0)
-        {
-            close(client_fd);
-            epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-            std::cout << "  client close the connction   " << std::endl;
-            return;
-        }
-        else if (n_read < 0)
-        {
-            perror("read ");
-        }
-        // mahdi request
         if (n_read > 0)
         {
             int flag = 0;
@@ -256,25 +203,10 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 }
                 memset(rec_b, 0, 1999);
             }
-
-            if (n_read == 0)
-            {
-                close(client_fd);
-                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-                std::cout << "  client close the connction   " << std::endl;
-                return;
-            }
-            else if (n_read < 0)
-            {
-                perror("read ");
-                // std::cout << client_fd << " failed" << std::endl;
-                //  err("read");
-            }
         }
         
-        else if (req[client_fd].Post_status == "chunked") // msdmfsdmnsdmkcj
+        else if (req[client_fd].Post_status == "chunked") 
         {
-            // std::ofstream saad1("ss.txt", std::ios::app | std::ios::binary);
             if ((n_read = read(client_fd, rec_b, 1999)) > 0)
             {
                 req[client_fd].outfile.write(rec_b, n_read);
@@ -293,20 +225,10 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 }
                 memset(rec_b, 0, 1999);
             }
-            if (n_read == 0)
-            {
-                close(client_fd);
-                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-                std::cout << "  client close the connction   " << std::endl;
-                return;
-            }
-            else if (n_read < 0)
-                perror("read ");
         }
 
         else if (req[client_fd].Post_status == "boundary")
         {
-            // std::ofstream saad1("ss.txt", std::ios::app | std::ios::binary);
             if ((n_read = read(client_fd, rec_b, 1999)) > 0)
             {
                 req[client_fd].outfile.write(rec_b, n_read);
@@ -314,10 +236,8 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 std::string str;
                 str.append(rec_b, n_read);
                 if (str.find(req[client_fd].boundary_separater + "--") != str.npos)
-                {
-                    
+                {  
                     process_file_boundary(req[client_fd].outfile_name, req[client_fd].boundary_separater);
-
                     req[client_fd].outfile.close();
                     ep->ev.events = EPOLLOUT;
                     ep->ev.data.fd = client_fd;
@@ -326,15 +246,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 }
                 memset(rec_b, 0, 1999);
             }
-            if (n_read == 0)
-            {
-                close(client_fd);
-                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-                std::cout << "  client close the connction   " << std::endl;
-                return;
-            }
-            else if (n_read < 0)
-                perror("read ");
         }
 
         else if (req[client_fd].Post_status == "Chunked/boundary")
@@ -347,27 +258,27 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 str.append(rec_b, n_read);
                 if (str.find("0\r\n\r\n") != str.npos)
                 {
-                        process_file(req[client_fd].outfile_name, "", req[client_fd].boundary_separater, 0);
-                        std::cout << str << std::endl;
-                        req[client_fd].outfile.close();
-                        ep->ev.events = EPOLLOUT;
-                        ep->ev.data.fd = client_fd;
-                        epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
-                        return ;
+                    process_file(req[client_fd].outfile_name, "", req[client_fd].boundary_separater, 0);
+                    std::cout << str << std::endl;
+                    req[client_fd].outfile.close();
+                    ep->ev.events = EPOLLOUT;
+                    ep->ev.data.fd = client_fd;
+                    epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+                    return ;
                 }
                 memset(rec_b, 0, 1999);
             }
-            if (n_read == 0)
-            {
-                close(client_fd);
-                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
-                std::cout << "  client close the connction   " << std::endl;
-                return;
-            }
-            else if (n_read < 0)
-                perror("read ");  
         }
+    }   
+    if (n_read == 0)
+    {
+        close(client_fd);
+        epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+        std::cout << "  client close the connction   " << std::endl;
+        return;
     }
+    else if (n_read < 0)
+        perror("read ");
     return;
 }
 
@@ -402,7 +313,6 @@ std::string generateDirectoryListing(const std::string &directoryPath)
 
             if (entryName != "." && entryName != "..")
             {
-                // std::cout << "url =" << directoryPath << "/" << entryName << std::endl;
                 htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
             }
         }
@@ -417,35 +327,8 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     return htmlStream.str();
 }
 
-// std::string generateDirectoryListing(const std::string &directoryPath)
-// {
-//     std::stringstream htmlStream;
-//     htmlStream << "<html><body>\n";
-//     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
 
-//     DIR *dir = opendir(directoryPath.c_str());
-//     if (dir)
-//     {
-//         struct dirent *entry;
-//         while ((entry = readdir(dir)) != NULL)
-//         {
-//             std::string entryName = entry->d_name;
-//             if (entryName != "." && entryName != "..")
-//             {
-//                 htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
-//             }
-//         }
-//         closedir(dir);
-//     }
-//     else
-//     {
-//         htmlStream << "<p>Error opening directory.</p>\n";
-//     }
-
-//     htmlStream << "</body></html>\n";
-//     return htmlStream.str();
-// }
-std::string mama(const std::string &contentType, size_t contentLength)
+std::string succes_page(const std::string &contentType, size_t contentLength)
 {
     std::string header;
 
@@ -494,7 +377,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         int fd_file = open(file_open.c_str(), O_RDONLY);
         file_size = lseek(fd_file, 0, SEEK_END);
         lseek(fd_file, 0, SEEK_SET);
-        std::string response_header = mama("text/html", file_size);
+        std::string response_header = succes_page("text/html", file_size);
         write(client_fd, response_header.c_str(), response_header.size());
         const size_t buffer_size = 1024;
         char buffer[buffer_size];
@@ -503,7 +386,11 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         {
             ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
             if (bytes_sent == -1)
+            {
+                std::remove(req[client_fd].outfile_name.c_str());
                 err("Error sending data1");
+            }
+                
         }
         close(fd_file);
     }

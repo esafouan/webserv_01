@@ -4,7 +4,7 @@
 void err(std::string str)
 {
     std::cout << str << std::endl;
-    _exit(1);
+    // _exit(1);
 }
 std::string constructResponseHeader(const std::string &contentType, std::string status)
 {
