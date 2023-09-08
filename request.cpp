@@ -107,10 +107,8 @@ std::string valueOfkey(std::string key, std::vector<std::pair<std::string, std::
 void pars_headers(std::vector<std::pair<std::string, std::string> > &headers, std::string &stat)
 {
     if (find_key("Transfer-Encoding", headers) && valueOfkey("Transfer-Encoding", headers) != "chunked")
-    {
         stat = "501";
-        error("501");
-    }
+   
 }
 
 void replace_slash_in_target(Server &serv, std::string &targ, int *flag)
@@ -188,25 +186,16 @@ int check_path(std::string &target, std::string &stat)
 void Request::error_handling(Server &serv)
 {
     if ((method == "GET" && serv.locations[0].GET == false) || (method == "POST" && serv.locations[0].POST == false) || (method == "DELETE" && serv.locations[0].DELETE == false))
-    {
         status = "405";
-        error("405 Method Not Allowed");
-    }
     else if (method != "GET" && method != "DELETE" && method != "POST")
     {
         if (method == "PUT" || method == "HEAD" || method == "TRACE" || method == "CONNECT")
-        {
             status = "501";
-            error("501 not implemented");
-        }
-        status = "404";
-        error("404 Bad Request");
+        else 
+            status = "404";
     }
     else if (target.size() > 2048)
-    {
         status = "414";
-        error("414 Request-URI Too Long");
-    }
     else
     {
         int flag = 0;
@@ -237,10 +226,7 @@ void Request::error_handling(Server &serv)
     //     }
     // }
     if (httpVersion != "HTTP/1.1")
-    {
         status = "400";
-        error("400 Bad Request");
-    }
     pars_headers(StoreHeaders, status);
 }
 
@@ -414,6 +400,7 @@ Request::Request(std::string req, Server server)
         status = "400";
         error("Bad Request");
     }
+
     fill_headers(StoreHeaders, myHeaders);
     
     // print Headers
@@ -422,15 +409,14 @@ Request::Request(std::string req, Server server)
     
     Request::error_handling(server);
 
-    if (method == "POST")
-        this->endOfrequest = 0;
-    
-   
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
-    //std::cout << extension << std::endl;
+
     if (method == "POST")
+    {
+        this->endOfrequest = 0;
         Request::get_post_status();
+    }
 }
 
 Request::~Request()

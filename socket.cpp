@@ -74,10 +74,12 @@ void process_file_boundary(std::string filename, std::string separater)
     while (std::getline(boundryfile, buffer))
     {
         if ((pos = buffer.find("Content-Type")) != buffer.npos)
-            myfile.open(("directorie/upload/" + get_current_time() + get_extension(buffer.substr(pos + 1))).c_str());  
+        {
+            myfile.open(("directorie/upload/z" + get_current_time() + get_extension(buffer.substr(pos + 1))).c_str());
+            std::getline(boundryfile, buffer);
+        }
         else if (buffer == (separater + "--" + "\r"))
         {
-            
             myfile.close();
             break;
         }
@@ -85,11 +87,8 @@ void process_file_boundary(std::string filename, std::string separater)
         {
             myfile.close();
         }
-        else if (buffer != "\r\n" && buffer != "\r")
-        {
+        else
             myfile << buffer + "\n";
-        }
-         
     }
     boundryfile.close();
     std::remove(filename.c_str());
@@ -101,7 +100,7 @@ void process_file(std::string s, std::string extension, std::string separater, i
     std::ifstream file(s.c_str(), std::ios::binary);
     std::string name;
     
-    if(type)
+    if (type)
         name = "directorie/upload/" + get_current_time() + extension;
     else
         name = "directorie/" + get_current_time() + ".txt";
@@ -129,7 +128,7 @@ void process_file(std::string s, std::string extension, std::string separater, i
     file.close();
     uploaded_file.close();
     std::remove(s.c_str());
-    if(!type)
+    if (!type)
         process_file_boundary(name, separater);
 }
 
@@ -170,9 +169,14 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                         break;
                 }
             }
-
+        
             if (req[client_fd].endOfrequest)
             {
+                if (req[client_fd].method == "DELETE")
+                {
+                    if(!access(req[client_fd].target.c_str(),F_OK) )
+                        std::remove(req[client_fd].target.c_str());
+                }
                 ep->ev.events = EPOLLOUT;
                 ep->ev.data.fd = client_fd;
                 epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
@@ -184,6 +188,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         char rec_b[2000];
 
         memset(rec_b, 0, 1999);
+
         if (req[client_fd].Post_status == "Bainary/Row")
         {
 
@@ -259,7 +264,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 if (str.find("0\r\n\r\n") != str.npos)
                 {
                     process_file(req[client_fd].outfile_name, "", req[client_fd].boundary_separater, 0);
-                    std::cout << str << std::endl;
                     req[client_fd].outfile.close();
                     ep->ev.events = EPOLLOUT;
                     ep->ev.data.fd = client_fd;
@@ -352,7 +356,7 @@ std::string succes_page(const std::string &contentType, size_t contentLength)
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
-    if (req[client_fd].method == "GET")
+    if (req[client_fd].method == "GET" )
     {
         std::string target = req[client_fd].target;
         if ((get_content_type(req[client_fd].target.c_str())) == "")
@@ -370,7 +374,31 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
             return (chunked_response(target, client_fd, req));
         }
     }
-    else if (req[client_fd].endOfrequest == 0 && req[client_fd].method == "POST")
+    else if( req[client_fd].method == "DELETE" )
+    {
+        size_t file_size;
+        std::string file_open = "directorie/succes.html";
+        int fd_file = open(file_open.c_str(), O_RDONLY);
+        file_size = lseek(fd_file, 0, SEEK_END);
+        lseek(fd_file, 0, SEEK_SET);
+        std::string response_header = succes_page("text/html", file_size);
+        write(client_fd, response_header.c_str(), response_header.size());
+        const size_t buffer_size = 1024;
+        char buffer[buffer_size];
+        ssize_t bytes_read;
+        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+        {
+            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
+            if (bytes_sent == -1)
+            {
+                std::remove(req[client_fd].outfile_name.c_str());
+                err("Error sending data1");
+            }
+                
+        }
+        close(fd_file);
+    }
+    else if (req[client_fd].endOfrequest == 0 && (req[client_fd].method == "POST"))
     {
         size_t file_size;
         std::string file_open = "directorie/succes.html";
@@ -414,8 +442,8 @@ uint32_t ipToUint32(std::string &ip)
 void fill_ser_Add(Server &ser, int i)
 {
     ser.seraddr_s[i].sin_family = AF_INET;
-    ser.seraddr_s[i].sin_addr.s_addr = htonl(ipToUint32(ser.host));
-    // ser.seraddr_s[i].sin_addr.s_addr = INADDR_ANY;
+    // ser.seraddr_s[i].sin_addr.s_addr = htonl(ipToUint32(ser.host));
+    ser.seraddr_s[i].sin_addr.s_addr = INADDR_ANY;
     ser.seraddr_s[i].sin_port = htons(ser.listen[i]);
 }
 
