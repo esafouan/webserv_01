@@ -147,21 +147,6 @@ void remove_size_of_chunk(std::string &str)
 {
     str = str.substr(str.find("\n") + 1);
 }
-std::string get_file_extension(std::string &str)
-{
-    std::string ext;
-    size_t pos;
-
-    pos = str.find("Content-Type: ");
-    str = str.substr(pos);
-    pos = str.find("\n");
-    ext = str.substr(14,pos - 15);
-    pos = str.find("\r\n\r\n");
-    str = str.substr(pos + 4);
-
-    return (get_extension(ext));
-}
-
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
@@ -240,16 +225,17 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 memset(rec_b, 0, 1999);
             }
         }
-        
+
         else if (req[client_fd].Post_status == "chunked")
         {
             std::string str;
- 
+             std::cout <<"hhhhhhhhhhhhher" <<std::endl;
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 str.append(rec_b, n_read);
                 if (req[client_fd].calcul_chunk_flag == 0)
                 {
+                   
                     req[client_fd].chunk_size = get_chunk_size(str);
                     if (req[client_fd].chunk_size == 0)
                     {
@@ -262,98 +248,76 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     remove_size_of_chunk(str);
                     req[client_fd].calcul_chunk_flag = 1;
                 }
+            
                 req[client_fd].chunk_size -= str.size();
                 req[client_fd].outfile.write(str.c_str(), str.size());
-                req[client_fd].outfile.flush();
-                if (req[client_fd].chunk_size < req[client_fd].Bytes_readed)
+                 std::cout <<"1 = " <<req[client_fd].chunk_size<<std::endl;
+                   
+                    int k = (req[client_fd].chunk_size - str.size());
+                    int j = req[client_fd].Bytes_readed - 1;
+                    std::cout <<"k = " << k<<std::endl;   
+                 std::cout <<"j= " <<j <<std::endl; 
+                if (k < j)
                 {
-                    size = req[client_fd].chunk_size;
-                    char tmp[size + 1];
+                    std::cout << "hna " << std::endl;
+                    size = req[client_fd].chunk_size - str.size();
+                    char tmp[size];
                     str.clear();
-
-                    if ((n_read = read(client_fd, tmp, size)) > 0)
+                    if ((n_read = read(client_fd, tmp, size - 1)) > 0)
                     {
                         str.append(tmp, n_read);
-                        
-                        if(n_read < size )
-                        {
-                            memset(tmp,0,n_read);
-                            if ((n_read = read(client_fd, tmp, (size - n_read))) > 0)
-                            {
-        
-                                str.append(tmp, n_read);
-                            }
-                                
-                        }
                         req[client_fd].outfile.write(str.c_str(), str.size());
-                        req[client_fd].outfile.flush();
-                        memset(tmp, 0, size);
+                        memset(tmp, 0, size - 1);
                     }
                     char separ[2];
                     read(client_fd, separ, 2);
                     req[client_fd].calcul_chunk_flag = 0;
                 }       
-                if(req[client_fd].calcul_chunk_flag == 1)
+                if (req[client_fd].calcul_chunk_flag == 1)
                     memset(rec_b, 0, size - 1);
             }
         }
-        
         else if (req[client_fd].Post_status == "boundary")
         {
-            if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
+            if ((n_read = read(client_fd, rec_b, 1999)) > 0)
             {
+                req[client_fd].outfile.write(rec_b, n_read);
+                req[client_fd].outfile.flush();
                 std::string str;
-                //if (req[client_fd].open_boundry_file == 0)
-                size_t pos;
-                str.append(req[client_fd].rest_of_boundry);
                 str.append(rec_b, n_read);
-             
-                if(req[client_fd].open_boundry_file == 0)
+                if (str.find(req[client_fd].boundary_separater + "--") != str.npos)
                 {
-                    req[client_fd].outfile.open(("directorie/upload/" + get_current_time() + get_file_extension(str)).c_str(), std::ios::binary);
-                    req[client_fd].open_boundry_file = 1;
-                }
-                if ((str.find(req[client_fd].boundary_separater)) == str.npos && (str.find(req[client_fd].boundary_separater + "--")) == str.npos)
-                {
-                       
-                    int rest = str.length() - req[client_fd].boundary_separater.length();
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-                    req[client_fd].rest_of_boundry = str.substr(rest);
-                    //std::cout <<req[client_fd].rest_of_boundry << std::endl;
-
-                }
-                else if((pos = str.find(req[client_fd].boundary_separater + "--")) != str.npos)
-                {
-
-                    int rest = str.length() - (str.length() - pos);
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-
+                    process_file_boundary(req[client_fd].outfile_name, req[client_fd].boundary_separater);
                     req[client_fd].outfile.close();
                     ep->ev.events = EPOLLOUT;
                     ep->ev.data.fd = client_fd;
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
-                    return ;
+                    return;
                 }
-                else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos)
-                {
-                    int rest = str.length() - (str.length() - pos);
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-              
-                    req[client_fd].rest_of_boundry = str.substr(pos + 1);
-                    
-                    req[client_fd].open_boundry_file = 0;
-                    req[client_fd].outfile.close();
-                }
-                memset(rec_b, 0, size - 1);
+                memset(rec_b, 0, 1999);
             }
-        
-            
         }
-        
 
+        // else if (req[client_fd].Post_status == "Chunked/boundary")
+        // {
+        //    if ((n_read = read(client_fd, rec_b, 1999)) > 0)
+        //     {
+        //         req[client_fd].outfile.write(rec_b, n_read);
+        //         req[client_fd].outfile.flush();
+        //         std::string str;
+        //         str.append(rec_b, n_read);
+        //         if (str.find("0\r\n\r\n") != str.npos)
+        //         {
+        //             // process_file(req[client_fd].outfile_name, "", req[client_fd].boundary_separater, 0);
+        //             req[client_fd].outfile.close();
+        //             ep->ev.events = EPOLLOUT;
+        //             ep->ev.data.fd = client_fd;
+        //             epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+        //             return ;
+        //         }
+        //         memset(rec_b, 0, 1999);
+        //     }
+        // }
     }
     if (n_read == 0)
     {

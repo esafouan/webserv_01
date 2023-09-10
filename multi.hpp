@@ -157,9 +157,15 @@ class Request
         int fd_file;
         int lenght_Readed;
         int lenght_of_content;
-
+        int calcul_chunk_flag;
+        size_t chunk_size;
+        size_t Bytes_readed;
+        std::string rest_of_boundry;
+        int open_boundry_file;
         std::ofstream outfile;
         std::string outfile_name;
+        std::string rest_of_buffer;
+
 
         std::ifstream infile;
         std::string infile_name;

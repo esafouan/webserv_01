@@ -249,7 +249,16 @@ Request &Request::operator=(Request const &req)
     this->lenght_of_content = req.lenght_of_content;
     this->extension = req.extension;
     this-> outfile_name = req.outfile_name;
-    //this->outfile = req.outfile;
+ 
+    this->open_boundry_file = req.open_boundry_file;
+    this->rest_of_boundry = req.rest_of_boundry;
+    
+    this->chunk_size =  req.chunk_size;
+    this->calcul_chunk_flag = req.calcul_chunk_flag;
+    this->Bytes_readed = req.Bytes_readed;
+    
+    this->rest_of_buffer = req.rest_of_buffer;
+
     this->boundary_separater = req.boundary_separater;
     this->outfile.copyfmt(req.outfile);
     this->outfile.clear();
@@ -324,15 +333,13 @@ void Request::get_post_status()
        
     else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")
     {
-        outfile_name = get_current_time() + ".txt";
+        outfile_name = "directorie/upload/" + get_current_time() + extension;
         outfile.open(outfile_name.c_str(), std::ios::binary);
         Post_status = "chunked";
     }
         
     else if (find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
     {
-        outfile_name = get_current_time() + ".txt";
-        outfile.open(outfile_name.c_str(), std::ios::binary);
         Post_status = "boundary";
         boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
     }
@@ -390,8 +397,13 @@ Request::Request(std::string req, Server server)
     this->fd_file = -1;
     this->endOfrequest = 1;
     this->lenght_Readed = 0;
+    calcul_chunk_flag = 0;
+    Bytes_readed = 2000;
+    this->open_boundry_file= 0;
+    this->chunk_size = 0;
+    this->rest_of_buffer = "";
+    rest_of_boundry = "";
 
-    
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
 
@@ -404,8 +416,8 @@ Request::Request(std::string req, Server server)
     fill_headers(StoreHeaders, myHeaders);
     
     // print Headers
-    // for (int i = 0; i < StoreHeaders.size(); i++)
-    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+   // for (int i = 0; i < StoreHeaders.size(); i++)
+    //    std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     
     Request::error_handling(server);
 
