@@ -199,8 +199,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     if (flag == 1)
                         break;
                 }
-            }
-
+            }   
             if (req[client_fd].endOfrequest)
             {
                 if (req[client_fd].method == "DELETE")
@@ -417,7 +416,7 @@ std::string succes_page(const std::string &contentType, size_t contentLength)
     std::string header;
 
     // Status line
-    header += "HTTP/1.1 302 OK\r\n";
+    header += "HTTP/1.1 201\r\n";
 
     // Content-Type header
     header += "Content-Type: " + contentType + "\r\n";
@@ -432,11 +431,57 @@ std::string succes_page(const std::string &contentType, size_t contentLength)
 
     return header;
 }
+std::string bad_page(const std::string &contentType, size_t contentLength,std::string status)
+{
+   std::string header;
 
+    
+    // Status line
+    header += "HTTP/1.1 ";
+    header += status;
+    header += "\r\n";
+
+    // Content-Type header
+    header += "Content-Type: " + contentType + "\r\n";
+    std::stringstream contentLengthStream;
+    contentLengthStream << contentLength;
+    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
+    // Blank line
+    header += "\r\n";
+
+    return header;
+}
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
-    if (req[client_fd].method == "GET")
+
+    if(req[client_fd].status != "201" && req[client_fd].status != "200 OK")
+    {
+         
+        size_t file_size;
+        std::string file_open = req[client_fd].target;
+        int fd_file = open(file_open.c_str(), O_RDONLY);
+        file_size = lseek(fd_file, 0, SEEK_END);
+        lseek(fd_file, 0, SEEK_SET);
+        std::string response_header = bad_page("text/html", file_size,req[client_fd].status);
+        write(client_fd, response_header.c_str(), response_header.size());
+        const size_t buffer_size = 1024;
+        char buffer[buffer_size];
+        ssize_t bytes_read;
+        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+        {
+            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
+            if (bytes_sent == -1)
+            {
+                std::remove(req[client_fd].outfile_name.c_str());
+                err("Error sending data1");
+            }
+        }
+        close(fd_file);
+        return 0;
+  
+    }
+    else if (req[client_fd].method == "GET")
     {
         std::string target = req[client_fd].target;
         if ((get_content_type(req[client_fd].target.c_str())) == "")

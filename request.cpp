@@ -104,11 +104,9 @@ std::string valueOfkey(std::string key, std::vector<std::pair<std::string, std::
     return "";
 }
 
-void pars_headers(std::vector<std::pair<std::string, std::string> > &headers, std::string &stat)
+void pars_headers(std::vector<std::pair<std::string, std::string> > &headers, std::string &stat, std::string method)
 {
-    if (find_key("Transfer-Encoding", headers) && valueOfkey("Transfer-Encoding", headers) != "chunked")
-        stat = "501";
-   
+
 }
 
 void replace_slash_in_target(Server &serv, std::string &targ, int *flag)
@@ -117,7 +115,7 @@ void replace_slash_in_target(Server &serv, std::string &targ, int *flag)
     {
         if (serv.locations[i].NAME == "/")
         {
-            targ = serv.locations[i].NAME.append(serv.locations[i].root);
+            targ = serv.locations[i].root;
             *flag = 1;
         }
     }
@@ -227,7 +225,26 @@ void Request::error_handling(Server &serv)
     // }
     if (httpVersion != "HTTP/1.1")
         status = "400";
-    pars_headers(StoreHeaders, status);
+
+    if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")
+    {
+        status = "501";
+        target = "directorie/error/501.html";
+    }
+       
+    if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
+    {
+        status = "400";
+        target = "directorie/error/400.html";
+    }
+       
+    if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
+    {
+        status = "400";
+        target = "directorie/error/400.html";
+    }
+       
+    //pars_headers(StoreHeaders, status, method);
 }
 
 Request::Request(Request const &req)
@@ -416,19 +433,29 @@ Request::Request(std::string req, Server server)
     fill_headers(StoreHeaders, myHeaders);
     
     // print Headers
-   // for (int i = 0; i < StoreHeaders.size(); i++)
-    //    std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    //for (int i = 0; i < StoreHeaders.size(); i++)
+    //  std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     
     Request::error_handling(server);
 
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 
-    if (method == "POST")
+    if (method == "POST" && (status == "200 OK" || status == "201"))
     {
         this->endOfrequest = 0;
         Request::get_post_status();
     }
+    if(status != "200 OK" && status != "201")
+        this->endOfrequest = 1;
+    std::cout << target << std::endl;
+    if (access(target.c_str(), F_OK) == -1)
+    {
+        status = "404";
+        target = "directorie/error/404.html";
+    }
+        
+    std::cout << status << std::endl;
 }
 
 Request::~Request()
