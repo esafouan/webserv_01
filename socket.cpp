@@ -5,7 +5,7 @@ std::string construct_res_dir_list(const std::string &contentType, size_t conten
     std::string header;
 
     // Status line
-    header += "HTTP/1.1 200 OK\r\n";
+    header += "HTTP/1.1 200\r\n";
 
     // Content-Type header
     header += "Content-Type: " + contentType + "\r\n";
@@ -93,42 +93,6 @@ void process_file_boundary(std::string filename, std::string separater)
     std::remove(filename.c_str());
 }
 
-// void process_file(std::string s, std::string extension, std::string separater, int type)
-// {
-//     std::ifstream file(s.c_str(), std::ios::binary);
-//     std::string name;
-
-//     if (type)
-//         name = "directorie/upload/" + get_current_time() + extension;
-//     else
-//         name = "directorie/" + get_current_time() + ".txt";
-
-//     std::ofstream uploaded_file(name.c_str(), std::ios::binary);
-
-//     while (1)
-//     {
-//         char *stat;
-//         std::string size;
-//         size_t n_read;
-//         std::getline(file, size);
-
-//         if (size.empty() || size == "0\r\n")
-//             break;
-//         size_t chunk_size = std::strtol(size.c_str(), &stat, 16);
-//         if (!chunk_size)
-//             break;
-//         char buff[chunk_size + 1];
-//         char separator[2];
-//         file.read(buff, chunk_size);
-//         file.read(separator, 2);
-//         uploaded_file.write(buff, chunk_size);
-//     }
-//     file.close();
-//     uploaded_file.close();
-//     std::remove(s.c_str());
-//     if (!type)
-//         process_file_boundary(name, separater);
-// }
 
 size_t get_chunk_size(std::string str)
 {
@@ -202,11 +166,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             }   
             if (req[client_fd].endOfrequest)
             {
-                if (req[client_fd].method == "DELETE")
-                {
-                    if (!access(req[client_fd].target.c_str(), F_OK))
-                        std::remove(req[client_fd].target.c_str());
-                }
                 ep->ev.events = EPOLLOUT;
                 ep->ev.data.fd = client_fd;
                 epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
@@ -378,13 +337,14 @@ std::string get_last(std::string path)
     return path;
 }
 
-std::string generateDirectoryListing(const std::string &directoryPath)
+std::string generateDirectoryListing(const std::string &directoryPath,  std::map<int, Request> &req, int client_fd)
 {
     std::stringstream htmlStream;
     htmlStream << "<html><body>\n";
     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
     std::string haha = "";
     DIR *dir = opendir(directoryPath.c_str());
+
 
     if (dir)
     {
@@ -393,11 +353,16 @@ std::string generateDirectoryListing(const std::string &directoryPath)
         while ((entry = readdir(dir)) != NULL)
         {
             std::string entryName = entry->d_name;
-            haha = get_last(directoryPath) + "/";
-
+           
             if (entryName != "." && entryName != "..")
             {
-                htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
+                if(req[client_fd].flag_uri == 1)
+                    htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
+                else 
+                {
+                    haha = get_last(directoryPath) + "/";
+                    htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
+                }
             }
         }
         closedir(dir);
@@ -411,27 +376,7 @@ std::string generateDirectoryListing(const std::string &directoryPath)
     return htmlStream.str();
 }
 
-std::string succes_page(const std::string &contentType, size_t contentLength)
-{
-    std::string header;
-
-    // Status line
-    header += "HTTP/1.1 201\r\n";
-
-    // Content-Type header
-    header += "Content-Type: " + contentType + "\r\n";
-    //    header += "Location: /directorie/succes.html\r\n";
-    // Content-Length header
-    std::stringstream contentLengthStream;
-    contentLengthStream << contentLength;
-    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
-
-    // Blank line
-    header += "\r\n";
-
-    return header;
-}
-std::string bad_page(const std::string &contentType, size_t contentLength,std::string status)
+std::string construct_error_page(const std::string &contentType, size_t contentLength,std::string status)
 {
    std::string header;
 
@@ -451,33 +396,44 @@ std::string bad_page(const std::string &contentType, size_t contentLength,std::s
 
     return header;
 }
+void pages(std::string file_open,int client_fd,std::string status,std::string outfile_name)
+{
+    size_t file_size;
+  
+
+    int fd_file = open(file_open.c_str(), O_RDONLY);
+    file_size = lseek(fd_file, 0, SEEK_END);
+    lseek(fd_file, 0, SEEK_SET);
+    std::string response_header = construct_error_page("text/html", file_size,status);
+    write(client_fd, response_header.c_str(), response_header.size());
+    const size_t buffer_size = 1024;
+    char buffer[buffer_size];
+    ssize_t bytes_read;
+    if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+    {
+        ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
+        if (bytes_sent == -1)
+        {
+            std::remove(outfile_name.c_str());
+            err("Error sending data1");
+        }
+    }
+    close(fd_file);
+}
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
 
-    if(req[client_fd].status != "201" && req[client_fd].status != "200 OK")
+    if ((req[client_fd].method == "DELETE"))
     {
-         
-        size_t file_size;
-        std::string file_open = req[client_fd].target;
-        int fd_file = open(file_open.c_str(), O_RDONLY);
-        file_size = lseek(fd_file, 0, SEEK_END);
-        lseek(fd_file, 0, SEEK_SET);
-        std::string response_header = bad_page("text/html", file_size,req[client_fd].status);
-        write(client_fd, response_header.c_str(), response_header.size());
-        const size_t buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_read;
-        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
-        {
-            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
-            if (bytes_sent == -1)
-            {
-                std::remove(req[client_fd].outfile_name.c_str());
-                err("Error sending data1");
-            }
-        }
-        close(fd_file);
+        
+        pages(req[client_fd].target,client_fd,req[client_fd].status,req[client_fd].outfile_name);
+        return 0;
+    }
+    else if(req[client_fd].status != "201" && req[client_fd].status != "200" && req[client_fd].status != "301")
+    {
+        // std::cout << req[client_fd].status << std::endl;
+        pages(req[client_fd].target,client_fd,req[client_fd].status,req[client_fd].outfile_name);
         return 0;
   
     }
@@ -486,7 +442,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         std::string target = req[client_fd].target;
         if ((get_content_type(req[client_fd].target.c_str())) == "")
         {
-            if (!directorie_list(target, client_fd))
+            if (!directorie_list(target, client_fd, req))
                 return 0;
         }
         else if (req[client_fd].header_flag == 0)
@@ -499,52 +455,12 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
             return (chunked_response(target, client_fd, req));
         }
     }
-    else if (req[client_fd].method == "DELETE")
-    {
-        size_t file_size;
-        std::string file_open = "directorie/succes.html";
-        int fd_file = open(file_open.c_str(), O_RDONLY);
-        file_size = lseek(fd_file, 0, SEEK_END);
-        lseek(fd_file, 0, SEEK_SET);
-        std::string response_header = succes_page("text/html", file_size);
-        write(client_fd, response_header.c_str(), response_header.size());
-        const size_t buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_read;
-        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
-        {
-            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
-            if (bytes_sent == -1)
-            {
-                std::remove(req[client_fd].outfile_name.c_str());
-                err("Error sending data1");
-            }
-        }
-        close(fd_file);
-    }
     else if (req[client_fd].endOfrequest == 0 && (req[client_fd].method == "POST"))
     {
-        size_t file_size;
-        std::string file_open = "directorie/succes.html";
-        int fd_file = open(file_open.c_str(), O_RDONLY);
-        file_size = lseek(fd_file, 0, SEEK_END);
-        lseek(fd_file, 0, SEEK_SET);
-        std::string response_header = succes_page("text/html", file_size);
-        write(client_fd, response_header.c_str(), response_header.size());
-        const size_t buffer_size = 1024;
-        char buffer[buffer_size];
-        ssize_t bytes_read;
-        if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
-        {
-            ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
-            if (bytes_sent == -1)
-            {
-                std::remove(req[client_fd].outfile_name.c_str());
-                err("Error sending data1");
-            }
-        }
-        close(fd_file);
+        req[client_fd].status = "201";
+        pages("succes.html",client_fd,req[client_fd].status,req[client_fd].outfile_name);
     }
+     
     return 0;
 }
 

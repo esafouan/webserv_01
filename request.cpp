@@ -136,9 +136,9 @@ void short_uri(std::string &tar, Server &serv, int *flag)
     {
         if (serv.locations[i].NAME != "/")
         {
-            size_t pos = tar.find(serv.locations[i].NAME);
-            if (pos != std::string::npos)
+            if (tar == serv.locations[i].NAME)
             {
+
                 tar = serv.locations[i].root;
                 *flag = 1;
             }
@@ -202,15 +202,12 @@ void Request::error_handling(Server &serv)
             replace_slash_in_target(serv, target, &flag);
         else if (target[0] == '/')
             target = target.substr(1);
-        if (access(target.c_str(), F_OK))
-        {
-            if (count_slash(target) == 0 && target != "/")
-                short_uri(target, serv, &flag);
-            else if (count_slash(target) >= 1)
-                long_uri(target, serv, &flag);
-            if (!flag)
-                target = serv.root;
-        }
+
+        if (count_slash(target) == 0 && target != "/")
+            short_uri(target, serv, &flag_uri);
+        else if (count_slash(target) >= 1)
+            long_uri(target, serv, &flag_uri);
+    
     }
     // if (find_key("Content-Length", StoreHeaders))
     // {
@@ -229,19 +226,19 @@ void Request::error_handling(Server &serv)
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")
     {
         status = "501";
-        target = "directorie/error/501.html";
+        target = "error/501.html";
     }
        
     if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
     {
         status = "400";
-        target = "directorie/error/400.html";
+        target = "error/400.html";
     }
        
     if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
     {
         status = "400";
-        target = "directorie/error/400.html";
+        target = "error/400.html";
     }
        
     //pars_headers(StoreHeaders, status, method);
@@ -273,9 +270,9 @@ Request &Request::operator=(Request const &req)
     this->chunk_size =  req.chunk_size;
     this->calcul_chunk_flag = req.calcul_chunk_flag;
     this->Bytes_readed = req.Bytes_readed;
-    
+    this->flag_uri = req.flag_uri;
     this->rest_of_buffer = req.rest_of_buffer;
-
+    this->uri_for_response = req.uri_for_response;
     this->boundary_separater = req.boundary_separater;
     this->outfile.copyfmt(req.outfile);
     this->outfile.clear();
@@ -404,12 +401,48 @@ std::string generate_extention(std::string content_type)
     return ("");
 }
 
+void Request::Delete_methode()
+{
+    struct stat fileStat;
+
+    
+    if (access(target.c_str(), F_OK) == 0)
+    {
+        if (stat(target.c_str(), &fileStat) == 0)
+        {
+            if (S_ISDIR(fileStat.st_mode))
+            {
+                if(rmdir(target.c_str()) == 0)
+                    status = "200";
+                else
+                    status = "404";
+            }
+            else if(!S_ISDIR(fileStat.st_mode))
+            {
+                if (fileStat.st_mode & S_IWUSR)
+                {
+                     std::remove(target.c_str());
+                      status = "200";
+                }
+                   
+                else
+                    status = "404"; 
+            }
+            else
+                status = "404";
+        }
+   }
+   else
+        status = "404";
+    std::cout << "in remove = " << status << std::endl;
+}
+
 Request::Request(std::string req, Server server)
 {
     int filmap = 0;
     std::vector<std::string> myreq;
     std::vector<std::string> myHeaders;
-    this->status = "200 OK";
+    this->status = "200";
     this->header_flag = 0;
     this->fd_file = -1;
     this->endOfrequest = 1;
@@ -420,7 +453,7 @@ Request::Request(std::string req, Server server)
     this->chunk_size = 0;
     this->rest_of_buffer = "";
     rest_of_boundry = "";
-
+    flag_uri = 0;
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
 
@@ -429,6 +462,8 @@ Request::Request(std::string req, Server server)
         status = "400";
         error("Bad Request");
     }
+
+    uri_for_response = target;
 
     fill_headers(StoreHeaders, myHeaders);
     
@@ -441,21 +476,48 @@ Request::Request(std::string req, Server server)
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 
-    if (method == "POST" && (status == "200 OK" || status == "201"))
+    if (method == "POST" && (status == "200" || status == "201"))
     {
         this->endOfrequest = 0;
         Request::get_post_status();
     }
-    if(status != "200 OK" && status != "201")
+    if (status != "200" && status != "201")
         this->endOfrequest = 1;
-    std::cout << target << std::endl;
+    // std::cout << target << std::endl;
     if (access(target.c_str(), F_OK) == -1)
     {
         status = "404";
-        target = "directorie/error/404.html";
+        target = "error/404.html";
     }
-        
-    std::cout << status << std::endl;
+    if (method == "DELETE" && status == "200")
+    {
+        std::cout << "del ar = " << target << std::endl;
+        Request::Delete_methode();
+        if(status == "200")
+            target = "error/200.html";
+        else
+            target = "error/404.html";
+    }
+    
+    if(status == "200")
+    {
+        struct stat fileStat;
+
+        if (stat(target.c_str(), &fileStat) == 0)
+        {
+            if (S_ISDIR(fileStat.st_mode))
+            {
+                int pos = target.length();
+                if(target[pos - 1] != '/')
+                {
+                    target.append("/");
+                    status = "301";
+                }
+            }
+        }
+    }
+
+//     std::cout << "fin" << status << std::endl;
 }
 
 Request::~Request()

@@ -13,17 +13,19 @@ int response_header(std::string target, int client_fd, std::map<int, Request> &r
     req[client_fd].header_flag = 1;
     return 1;
 }
-int directorie_list(std::string target, int client_fd)
+
+int directorie_list(std::string target, int client_fd,  std::map<int, Request> &req)
 {
     std::string dir;
     off_t file_size;
     std::string response_header;
+    std::cout << "in dir ="<< target << std::endl;
     //std::cout <<"resp = " <<target << std::endl;
     if(target[0] == '/')
         target = target.substr(1);
-    dir = generateDirectoryListing(target);
+    dir = generateDirectoryListing(target, req, client_fd);
     file_size = dir.size();
-    response_header = construct_res_dir_list("text/html", file_size);
+    response_header = construct_error_page("text/html", file_size,req[client_fd].status);
     write(client_fd, response_header.c_str(), response_header.size());
     const size_t buffer_size = 1024;
     char buffer[buffer_size];
@@ -35,6 +37,7 @@ int directorie_list(std::string target, int client_fd)
     }
     return 0;
 }
+
 int chunked_response(std::string target, int client_fd, std::map<int, Request> &req)
 {
 

@@ -31,7 +31,9 @@
 #include <vector>
 #include <algorithm>
 #include <filesystem>
-
+#include <unistd.h>
+#include <cerrno>
+#include <sys/stat.h>
 #define SA_I struct sockaddr_in
 
 #define MAX_REQUEST_SIZE 2048
@@ -166,7 +168,8 @@ class Request
         std::string outfile_name;
         std::string rest_of_buffer;
 
-
+        std::string uri_for_response;
+        int flag_uri;
         std::ifstream infile;
         std::string infile_name;
 
@@ -180,7 +183,9 @@ class Request
         int post_flag;
         std::ofstream ostrea;
         std::string Post_status;
+
     public :
+
         Request(std::string req, Server server);
         Request(Request const &req);
         Request();
@@ -190,6 +195,7 @@ class Request
         ~Request();
         void creating_file(std::vector<std::pair<std::string, std::string> > &postReq, std::string &bod);
         void get_post_status();
+        void Delete_methode();
 };
 
 // class soc
@@ -238,7 +244,7 @@ typedef struct ep
 std::string get_current_time();
 std::string construct_res_dir_list(const std::string &contentType, size_t contentLength);
 int chunked_response(std::string target, int client_fd, std::map<int, Request> &req);
-int directorie_list(std::string target, int client_fd);
+int directorie_list(std::string target, int client_fd, std::map<int, Request> &req);
 int response_header(std::string target, int client_fd, std::map<int, Request> &req);
 void err(std::string str);
 void init(Server& ser,epol *ep);
@@ -250,11 +256,12 @@ void response();
 std::string removeSpaces(const std::string &input);
 location *get_location(std::ifstream &Myfile, std::string &line);
 std::vector<Server> mainf(int ac, char **av);
-
+std::string generateDirectoryListing(const std::string &directoryPath,  std::map<int, Request> &req, int client_fd);
 std::string constructResponseHeader(const std::string &contentType, std::string status);
 std::string birng_content(std::vector<Request> req, int reciver);
-std::string generateDirectoryListing(const std::string &directoryPath);
+std::string opendir(const std::string &directoryPath, std::map<int, Request> &req, int client_fd);
 std::string get_content_type(const char *path);
+std::string construct_error_page(const std::string &contentType, size_t contentLength,std::string status);
 class args : std::exception
 
 {
