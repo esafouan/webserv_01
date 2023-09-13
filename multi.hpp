@@ -196,6 +196,7 @@ class Request
         void creating_file(std::vector<std::pair<std::string, std::string> > &postReq, std::string &bod);
         void get_post_status();
         void Delete_methode();
+        void get_target_page();
 };
 
 // class soc

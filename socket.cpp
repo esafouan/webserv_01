@@ -329,10 +329,13 @@ std::string get_last(std::string path)
 {
     size_t h = 0;
 
-    while (path.find('/') != std::string::npos)
+    while ((h = path.find('/')) != std::string::npos)
     {
-        h = path.find('/');
-        path = path.substr(h + 1);
+
+        if (h != path.length() - 1)
+            path = path.substr(h + 1);
+        else
+            break;
     }
     return path;
 }
@@ -344,7 +347,6 @@ std::string generateDirectoryListing(const std::string &directoryPath,  std::map
     htmlStream << "<h1>Directory Listing: " << directoryPath << "</h1>\n";
     std::string haha = "";
     DIR *dir = opendir(directoryPath.c_str());
-
 
     if (dir)
     {
@@ -360,7 +362,8 @@ std::string generateDirectoryListing(const std::string &directoryPath,  std::map
                     htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
                 else 
                 {
-                    haha = get_last(directoryPath) + "/";
+
+                    haha = get_last(directoryPath);
                     htmlStream << "<p><a href=\"" << haha << entryName << "\">" << entryName << "</a></p>\n";
                 }
             }
@@ -420,6 +423,7 @@ void pages(std::string file_open,int client_fd,std::string status,std::string ou
     }
     close(fd_file);
 }
+
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -440,7 +444,8 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     else if (req[client_fd].method == "GET")
     {
         std::string target = req[client_fd].target;
-        if ((get_content_type(req[client_fd].target.c_str())) == "")
+   
+       if ((get_content_type(req[client_fd].target.c_str())) == "")
         {
             if (!directorie_list(target, client_fd, req))
                 return 0;

@@ -19,7 +19,6 @@ int directorie_list(std::string target, int client_fd,  std::map<int, Request> &
     std::string dir;
     off_t file_size;
     std::string response_header;
-    std::cout << "in dir ="<< target << std::endl;
     //std::cout <<"resp = " <<target << std::endl;
     if(target[0] == '/')
         target = target.substr(1);

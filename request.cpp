@@ -222,26 +222,13 @@ void Request::error_handling(Server &serv)
     // }
     if (httpVersion != "HTTP/1.1")
         status = "400";
+    else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")
 
-    if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")
-    {
         status = "501";
-        target = "error/501.html";
-    }
-       
-    if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
-    {
+    else if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
         status = "400";
-        target = "error/400.html";
-    }
-       
-    if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
-    {
+    else if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
         status = "400";
-        target = "error/400.html";
-    }
-       
-    //pars_headers(StoreHeaders, status, method);
 }
 
 Request::Request(Request const &req)
@@ -434,7 +421,23 @@ void Request::Delete_methode()
    }
    else
         status = "404";
-    std::cout << "in remove = " << status << std::endl;
+}
+void Request::get_target_page()
+{
+    if (status == "400")
+        target = "error/400.html";
+    else if (status == "401")
+        target = "error/401.html";
+    else if(status == "403")
+        target = "error/403.html";
+    else if(status == "404")
+        target = "error/404.html";
+    else if(status == "500")
+        target = "error/500.html";
+    else if(status == "501")
+        target = "error/501.html";
+    else if(status == "503")
+        target = "error/503.html";
 }
 
 Request::Request(std::string req, Server server)
@@ -456,7 +459,6 @@ Request::Request(std::string req, Server server)
     flag_uri = 0;
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
-
     if (filmap)
     {
         status = "400";
@@ -476,28 +478,19 @@ Request::Request(std::string req, Server server)
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 
-    if (method == "POST" && (status == "200" || status == "201"))
+    if (method == "POST" && status == "200")
     {
         this->endOfrequest = 0;
         Request::get_post_status();
     }
-    if (status != "200" && status != "201")
+    if (status != "200")
         this->endOfrequest = 1;
     // std::cout << target << std::endl;
-    if (access(target.c_str(), F_OK) == -1)
-    {
+    if (status == "200" && access(target.c_str(), F_OK) == -1)
         status = "404";
-        target = "error/404.html";
-    }
     if (method == "DELETE" && status == "200")
-    {
-        std::cout << "del ar = " << target << std::endl;
         Request::Delete_methode();
-        if(status == "200")
-            target = "error/200.html";
-        else
-            target = "error/404.html";
-    }
+    
     
     if(status == "200")
     {
@@ -517,7 +510,7 @@ Request::Request(std::string req, Server server)
         }
     }
 
-//     std::cout << "fin" << status << std::endl;
+    Request::get_target_page();
 }
 
 Request::~Request()
