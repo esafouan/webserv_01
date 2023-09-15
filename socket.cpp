@@ -1,5 +1,5 @@
 #include "multi.hpp"
-
+int Request::num_file = 0;
 std::string construct_res_dir_list(const std::string &contentType, size_t contentLength)
 {
     std::string header;
@@ -74,7 +74,7 @@ void process_file_boundary(std::string filename, std::string separater)
     {
         if ((pos = buffer.find("Content-Type")) != buffer.npos)
         {
-            myfile.open(("directorie/upload/z" + get_current_time() + get_extension(buffer.substr(pos + 1))).c_str());
+            myfile.open(("directorie/upload/" + get_current_time() + get_extension(buffer.substr(pos + 1))).c_str());
             std::getline(boundryfile, buffer);
         }
         else if (buffer == (separater + "--" + "\r"))
@@ -100,7 +100,7 @@ size_t get_chunk_size(std::string str)
     pos = str.find("\r\n");
     // std::cout << "saad " << (int )str.substr(0, pos)[0] << std::endl;
     char *stat;
-    // std::cout << "hex = " << str.substr(0, pos) << std::endl;
+    // std::cout << "hex = " << str99substr(0, pos) << std::endl;
     // std::cout << "str = " << str << std::endl;
     size_t chunk_size = std::strtol(str.substr(0, pos).c_str(), &stat, 16);
     // std::cout << chunk_size << std::endl;
@@ -117,14 +117,21 @@ std::string get_file_extension(std::string &str)
     size_t pos;
 
     pos = str.find("Content-Type: ");
+   
     str = str.substr(pos);
+
     pos = str.find("\n");
     ext = str.substr(14,pos - 15);
-    pos = str.find("\r\n\r\n");
+ 
+    pos = str.find("\r\n\r\n"); 
+  
     str = str.substr(pos + 4);
+
+   
 
     return (get_extension(ext));
 }
+
 
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
@@ -163,7 +170,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     if (flag == 1)
                         break;
                 }
-            }   
+            }
             if (req[client_fd].endOfrequest)
             {
                 ep->ev.events = EPOLLOUT;
@@ -258,30 +265,94 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         
         else if (req[client_fd].Post_status == "boundary")
         {
+            size_t pos;
+            
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 std::string str;
-                //if (req[client_fd].open_boundry_file == 0)
-                size_t pos;
+                
+
                 str.append(req[client_fd].rest_of_boundry);
                 str.append(rec_b, n_read);
-             
-                if(req[client_fd].open_boundry_file == 0)
+               
+                if (req[client_fd].open_boundry_file == 0)
                 {
-                    req[client_fd].outfile.open(("directorie/upload/" + get_current_time() + get_file_extension(str)).c_str(), std::ios::binary);
+                    std::string time_tmp;
+                    std::stringstream s;
+                    s << Request::num_file++;
+                    time_tmp +=  s.str() ;
+                    
+                    std::string pt = time_tmp + get_file_extension(str);
+            
+                    req[client_fd].outfile.open(("directorie/upload/" + pt).c_str() , std::ios::binary);
                     req[client_fd].open_boundry_file = 1;
+
                 }
-                if ((str.find(req[client_fd].boundary_separater)) == str.npos && (str.find(req[client_fd].boundary_separater + "--")) == str.npos)
+                if ((str.find(req[client_fd].boundary_separater)) == str.npos && (str.find(req[client_fd].boundary_separater + "--")) == str.npos) //if no separater in the chunk
                 {
-                       
                     int rest = str.length() - req[client_fd].boundary_separater.length();
                     req[client_fd].outfile.write(str.c_str(), rest);
                     req[client_fd].outfile.flush();
                     req[client_fd].rest_of_boundry = str.substr(rest);
-                    //std::cout <<req[client_fd].rest_of_boundry << std::endl;
-
                 }
-                else if((pos = str.find(req[client_fd].boundary_separater + "--")) != str.npos)
+                 else if((pos = str.find(req[client_fd].boundary_separater)) != str.npos  && (str.find(req[client_fd].boundary_separater + "--")) != str.npos)
+                {
+                    req[client_fd].outfile.write(str.c_str(), pos);
+                    req[client_fd].outfile.flush();
+                    req[client_fd].outfile.close();
+                    req[client_fd].open_boundry_file = 0;
+                    while(1)
+                    {
+                        //handle rest parts need cleaning code
+                        if(req[client_fd].open_boundry_file == 0)
+                        {
+
+                            std::string time_tmp;
+                            std::stringstream s;
+                            s << Request::num_file++;
+                            time_tmp +=  s.str() ;
+                            std::string pt = time_tmp + get_file_extension(str);
+                            req[client_fd].outfile.open(("directorie/upload/" + pt).c_str() , std::ios::binary);
+                            req[client_fd].open_boundry_file = 1;
+                            
+                        }
+                        else if ((pos = str.find(req[client_fd].boundary_separater + "--")) != str.npos)
+                        {
+                            std::cout << str << std::endl;
+                            req[client_fd].outfile.write(str.c_str(), pos);
+                            req[client_fd].outfile.flush();
+                            req[client_fd].outfile.close();
+
+                            ep->ev.events = EPOLLOUT;
+                            ep->ev.data.fd = client_fd;
+                            epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
+                            return ;
+                        }
+                        else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos)
+                        {
+                            
+                            req[client_fd].outfile.write(str.c_str(), pos);
+                            req[client_fd].outfile.flush();
+                            req[client_fd].outfile.close();
+                            req[client_fd].open_boundry_file == 0;
+                        }
+                        
+             
+                        //std::cout <<"sdjjshd" <<std::endl;
+                    }
+                }
+                else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos  ) // midle separater
+                {
+                    int rest = str.length() - (str.length() - pos);
+                    req[client_fd].outfile.write(str.c_str(), rest);
+                    req[client_fd].outfile.flush();
+                    req[client_fd].rest_of_boundry = str.substr(pos + 1);
+                 
+                    req[client_fd].open_boundry_file = 0;
+                    req[client_fd].outfile.close();
+                }
+               
+                else if((pos = str.find(req[client_fd].boundary_separater + "--")) != str.npos) //last separater
                 {
 
                     int rest = str.length() - (str.length() - pos);
@@ -294,24 +365,12 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_MOD, client_fd, &ep->ev);
                     return ;
                 }
-                else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos)
-                {
-                    int rest = str.length() - (str.length() - pos);
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-              
-                    req[client_fd].rest_of_boundry = str.substr(pos + 1);
-                    
-                    req[client_fd].open_boundry_file = 0;
-                    req[client_fd].outfile.close();
-                }
                 memset(rec_b, 0, size - 1);
             }
         
             
         }
         
-
     }
     if (n_read == 0)
     {
@@ -388,7 +447,6 @@ std::string construct_error_page(const std::string &contentType, size_t contentL
     header += "HTTP/1.1 ";
     header += status;
     header += "\r\n";
-
     // Content-Type header
     header += "Content-Type: " + contentType + "\r\n";
     std::stringstream contentLengthStream;
@@ -399,6 +457,29 @@ std::string construct_error_page(const std::string &contentType, size_t contentL
 
     return header;
 }
+
+std::string redirect_header(std::string target,std::string status)
+{
+   std::string header;
+
+    
+    // Status line
+    header += "HTTP/1.1 ";
+    header += status;
+    header += "\r\n";
+    header += "Location: ";
+    header += target;
+    // Content-Type header
+    // header += "Content-Type: " + contentType + "\r\n";
+    // std::stringstream contentLengthStream;
+    // contentLengthStream << contentLength;
+    // header += "Content-Length: " + contentLengthStream.str() + "\r\n";
+    // Blank line
+    header += "\r\n";
+
+    return header;
+}
+
 void pages(std::string file_open,int client_fd,std::string status,std::string outfile_name)
 {
     size_t file_size;
@@ -427,16 +508,21 @@ void pages(std::string file_open,int client_fd,std::string status,std::string ou
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
-
     if ((req[client_fd].method == "DELETE"))
     {
         
         pages(req[client_fd].target,client_fd,req[client_fd].status,req[client_fd].outfile_name);
         return 0;
     }
+    else if(req[client_fd].status == "301")
+    {
+        std::cout << "hna assi zby " << std::endl;
+        std::string response_header = redirect_header(req[client_fd].target, req[client_fd].status);
+        write(client_fd, response_header.c_str(), response_header.size());
+        return 0;
+    }
     else if(req[client_fd].status != "201" && req[client_fd].status != "200" && req[client_fd].status != "301")
     {
-        // std::cout << req[client_fd].status << std::endl;
         pages(req[client_fd].target,client_fd,req[client_fd].status,req[client_fd].outfile_name);
         return 0;
   
@@ -444,7 +530,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     else if (req[client_fd].method == "GET")
     {
         std::string target = req[client_fd].target;
-   
+        std::cout << "hna assi zby 1" << std::endl;
        if ((get_content_type(req[client_fd].target.c_str())) == "")
         {
             if (!directorie_list(target, client_fd, req))
@@ -566,7 +652,7 @@ void run(std::vector<Server> servers, epol *ep)
                         {
 
                             epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, ep->events[i].data.fd, NULL);
-                            // std::cout << "closing " << ep->events[i].data.fd << std::endl;
+                            std::cout << "closing " << ep->events[i].data.fd << std::endl;
                             close(ep->events[i].data.fd);
                             std::map<int, Request>::iterator it = requests.find(ep->events[i].data.fd);
                             if (it != requests.end())

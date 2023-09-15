@@ -184,8 +184,12 @@ class Request
         std::ofstream ostrea;
         std::string Post_status;
 
+        std::string cgi_filename;
+        std::string cgi_body;
+        
+        std::string time;
     public :
-
+        static int num_file;
         Request(std::string req, Server server);
         Request(Request const &req);
         Request();
@@ -197,6 +201,7 @@ class Request
         void get_post_status();
         void Delete_methode();
         void get_target_page();
+        void cgi_information();
 };
 
 // class soc

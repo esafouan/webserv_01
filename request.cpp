@@ -109,16 +109,37 @@ void pars_headers(std::vector<std::pair<std::string, std::string> > &headers, st
 
 }
 
-void replace_slash_in_target(Server &serv, std::string &targ, int *flag)
+std::string replace_slash_in_target(Server &serv, std::string &targ, int *flag)
 {
+    std::string state = "200";
+
     for (int i = 0; i < serv.locations.size(); i++)
     {
         if (serv.locations[i].NAME == "/")
         {
-            targ = serv.locations[i].root;
+            std::cout << "localisation = "<< serv.locations[i]._return << std::endl;
+            if (serv.locations[i]._return == "")
+            {
+                if(serv.locations[i].index == "")
+                {
+                    if (serv.locations[i].autoindex == true)
+                        targ = serv.locations[i].root;
+                    else
+                        state = "403";
+                }
+                else
+                    targ = serv.locations[i].root + "/"+ serv.locations[i].index; 
+            }   
+            else
+            {
+                std::cout << "heeeere "<<std::endl;
+                targ = serv.locations[i]._return;
+                state = "301";
+            }            
             *flag = 1;
         }
     }
+    return state;
 }
 
 int count_slash(std::string tar)
@@ -130,7 +151,7 @@ int count_slash(std::string tar)
     return (count);
 }
 
-void short_uri(std::string &tar, Server &serv, int *flag)
+void short_uri(std::string &tar, Server &serv, int *flag_uri)
 {
     for (int i = 0; i < serv.locations.size(); i++)
     {
@@ -138,15 +159,20 @@ void short_uri(std::string &tar, Server &serv, int *flag)
         {
             if (tar == serv.locations[i].NAME)
             {
-
-                tar = serv.locations[i].root;
-                *flag = 1;
+                if(serv.locations[i]._return == "")
+                    tar = serv.locations[i].root;
+                else
+                {
+                    tar = serv.locations[i]._return;
+                    //status must be 301
+                }
+                *flag_uri = 1;
             }
         }
     }
 }
 
-void long_uri(std::string &tar, Server &serv, int *flag)
+void long_uri(std::string &tar, Server &serv, int *flag_uri)
 {
     std::vector<std::string> uri;
 
@@ -160,8 +186,14 @@ void long_uri(std::string &tar, Server &serv, int *flag)
         {
             if (uri[j] == serv.locations[i].NAME)
             {
-                tar += serv.locations[i].root;
-                *flag = 1;
+                if(serv.locations[i]._return == "")
+                    tar += serv.locations[i].root;
+                else
+                {
+                    tar += serv.locations[i]._return;
+                    //status must be 301
+                }
+                *flag_uri = 1;
                 flag2 = 1;
             }
         }
@@ -199,7 +231,7 @@ void Request::error_handling(Server &serv)
         int flag = 0;
 
         if (target == "/")
-            replace_slash_in_target(serv, target, &flag);
+            status = replace_slash_in_target(serv, target, &flag);
         else if (target[0] == '/')
             target = target.substr(1);
 
@@ -261,6 +293,8 @@ Request &Request::operator=(Request const &req)
     this->rest_of_buffer = req.rest_of_buffer;
     this->uri_for_response = req.uri_for_response;
     this->boundary_separater = req.boundary_separater;
+    this->time = req.time;
+
     this->outfile.copyfmt(req.outfile);
     this->outfile.clear();
     outfile.open(req.outfile_name.c_str());
@@ -388,10 +422,59 @@ std::string generate_extention(std::string content_type)
     return ("");
 }
 
+// void    get_paths_to_delete(std::string path, std::vector<std::string> &paths)
+// {
+//     DIR *my_dir = opendir(path.c_str());
+    
+//     if(my_dir)
+//     {
+//         struct dirent* content;
+//         while((content = readdir(my_dir)) != NULL)
+//             std::cout << "Name = "<< content->d_name << " Type = " << (int)content->d_type  << std::endl;
+//         exit(0);
+//     }
+// }
+
+int DeleteDirectoryRecursive(const char* path)
+{
+    DIR* dir = opendir(path);
+
+    if (!dir) {
+        perror("Error opening directory");
+        return 0;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir))) {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            char entryPath[1024];
+            snprintf(entryPath, sizeof(entryPath), "%s/%s", path, entry->d_name);
+
+            struct stat statbuf;
+            if (lstat(entryPath, &statbuf) == 0) {
+                if (S_ISDIR(statbuf.st_mode)) {
+                    DeleteDirectoryRecursive(entryPath);
+                } else {
+                    if (remove(entryPath) != 0) {
+                        return 0;
+                    }
+                }
+            } else {
+                return 0;
+            }
+        }
+    }
+    closedir(dir);
+    if (rmdir(path) != 0) {
+       return 0;
+    }
+    return 1;
+}
+
 void Request::Delete_methode()
 {
     struct stat fileStat;
-
+    std::vector<std::string> paths_to_delete;
     
     if (access(target.c_str(), F_OK) == 0)
     {
@@ -399,10 +482,13 @@ void Request::Delete_methode()
         {
             if (S_ISDIR(fileStat.st_mode))
             {
-                if(rmdir(target.c_str()) == 0)
+               if(DeleteDirectoryRecursive(target.c_str()))
                     status = "200";
+                //get_paths_to_delete(target, paths_to_delete);
+                //if(rmdir(target.c_str()) == 0)
+                //    
                 else
-                    status = "404";
+                   status = "404";
             }
             else if(!S_ISDIR(fileStat.st_mode))
             {
@@ -422,6 +508,7 @@ void Request::Delete_methode()
    else
         status = "404";
 }
+
 void Request::get_target_page()
 {
     if (status == "400")
@@ -440,6 +527,7 @@ void Request::get_target_page()
         target = "error/503.html";
 }
 
+
 Request::Request(std::string req, Server server)
 {
     int filmap = 0;
@@ -451,14 +539,17 @@ Request::Request(std::string req, Server server)
     this->endOfrequest = 1;
     this->lenght_Readed = 0;
     calcul_chunk_flag = 0;
-    Bytes_readed = 2000;
+    Bytes_readed = 1024;
     this->open_boundry_file= 0;
     this->chunk_size = 0;
     this->rest_of_buffer = "";
     rest_of_boundry = "";
     flag_uri = 0;
+    time = "";
+   
     ft_split(req, "\r\n", myHeaders);
-    fill_type(method, target, httpVersion, myHeaders, &filmap);
+    fill_type(method, target, httpVersion, myHeaders, &filmap);    
+    
     if (filmap)
     {
         status = "400";
@@ -472,9 +563,8 @@ Request::Request(std::string req, Server server)
     // print Headers
     //for (int i = 0; i < StoreHeaders.size(); i++)
     //  std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
-    
-    Request::error_handling(server);
 
+    Request::error_handling(server);
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 
@@ -485,13 +575,17 @@ Request::Request(std::string req, Server server)
     }
     if (status != "200")
         this->endOfrequest = 1;
-    // std::cout << target << std::endl;
+    
     if (status == "200" && access(target.c_str(), F_OK) == -1)
         status = "404";
+    
     if (method == "DELETE" && status == "200")
+    {
         Request::Delete_methode();
-    
-    
+        if (status == "200")
+            target = "error/200.html";
+    }
+      
     if(status == "200")
     {
         struct stat fileStat;
@@ -509,7 +603,6 @@ Request::Request(std::string req, Server server)
             }
         }
     }
-
     Request::get_target_page();
 }
 
