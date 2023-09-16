@@ -117,7 +117,6 @@ std::string replace_slash_in_target(Server &serv, std::string &targ, int *flag)
     {
         if (serv.locations[i].NAME == "/")
         {
-            std::cout << "localisation = "<< serv.locations[i]._return << std::endl;
             if (serv.locations[i]._return == "")
             {
                 if(serv.locations[i].index == "")
@@ -549,7 +548,7 @@ Request::Request(std::string req, Server server)
    
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);    
-    
+    std::cout << "first = "<< target <<std::endl;
     if (filmap)
     {
         status = "400";
@@ -598,12 +597,14 @@ Request::Request(std::string req, Server server)
                 if(target[pos - 1] != '/')
                 {
                     target.append("/");
-                    status = "301";
+                    //status = "301";
                 }
             }
         }
     }
     Request::get_target_page();
+    std::cout << "last = "<< target <<std::endl;
+
 }
 
 Request::~Request()
