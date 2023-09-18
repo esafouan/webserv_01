@@ -1,6 +1,5 @@
 #include "multi.hpp"
 
-
 std::string check_path(std::string path)
 {
     // if(access(path.c_str(), F_OK) != 0)
@@ -12,6 +11,8 @@ std::string removeSpaces(const std::string &input)
 {
     std::string result = input;
     result.erase(std::remove(result.begin(), result.end(), ' '), result.end());
+
+
     return result;
 }
 
@@ -153,7 +154,6 @@ int max_body(std::string body)
     return atoi(body.c_str());
 }
 
-
 std::vector<Server> mainf(int ac, char **av)
 {
     std::vector<Server>servers;
@@ -227,3 +227,4 @@ std::vector<Server> mainf(int ac, char **av)
     }
         return(servers);
 }
+

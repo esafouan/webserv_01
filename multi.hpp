@@ -100,7 +100,7 @@ class Server
         std::vector<u_int16_t>  listen;
         std::string  host;
         std::vector<std::string>  server_name;
-        std::map<int, std::string>error_page;
+        std::map<int, std::string> error_page;
         int  max_body;
         std::string  root;
         std::string  index;
@@ -184,9 +184,6 @@ class Request
         std::ofstream ostrea;
         std::string Post_status;
 
-        std::string cgi_filename;
-        std::string cgi_body;
-        
         std::string time;
     public :
         static int num_file;
