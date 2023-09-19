@@ -225,6 +225,6 @@ std::vector<Server> mainf(int ac, char **av)
         else 
             exit(6);
     }
-        return(servers);
+    return(servers);
 }
 
