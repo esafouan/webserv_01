@@ -43,6 +43,7 @@ int chunked_response(std::string target, int client_fd, std::map<int, Request> &
     const size_t buffer_size = 1024;
     char buffer[buffer_size];
     ssize_t bytes_read;
+    
     if ((bytes_read = read(req[client_fd].fd_file, buffer, buffer_size)) > 0)
     {
         // chunks

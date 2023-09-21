@@ -1,8 +1,8 @@
-SRC =  multiplexer.cpp request.cpp pars.cpp socket.cpp response_helper.cpp
+SRC =  multiplexer.cpp request.cpp config_file/location.cpp config_file/server.cpp socket.cpp response_helper.cpp
 OBJ = $(SRC:.cpp=.o)
 CXX = g++
 RM = rm -f
-CPPFLAGS =   -std=c++98  #-fsanitize=address -g3
+CPPFLAGS =   -std=c++98  -fsanitize=address -g3
 NAME = webserve
 
 all: $(NAME)

@@ -91,12 +91,21 @@ int main(int ac, char **av)
     ep.ep_fd = epoll_create(1);
     if (ep.ep_fd == -1)
         err("epolllll");
-    std::vector<Server> servers = mainf(ac, av);
-    for(int i = 0;i < servers.size();i++)
+    try
     {
-        init(servers[i],&ep);
+        Server serv(av[1]);     
+        for(int i = 0;i < serv.servers.size();i++)
+        {
+            init(serv.servers[i],&ep);
+        }
+        run(serv.servers,&ep);
     }
-    run(servers,&ep);
+    catch(...)
+    {
+
+    }
+    
+
     
 }
 

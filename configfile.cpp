@@ -53,7 +53,18 @@ class location
         int name(location &location, std::vector<std::string> &hold);
         int rreturn(location &location, std::vector<std::string> &hold);
         int root_name(location &location, std::vector<std::string> &hold);
-        int Index(location &location, std::vector<std::string> &hold); 
+        int Index(location &location, std::vector<std::string> &hold);
+        void    print()
+        {
+            std::cout << NAME << std::endl;
+            std::cout << "root :\n" << root << std::endl;
+            std::cout << "autoindex :\n" << autoindex << std::endl;
+            std::cout << "POST :\n" << POST << std::endl;
+            std::cout << "GET :\n" << GET << std::endl;
+            std::cout << "DELETE :\n" << DELETE << std::endl;
+            std::cout << "index :\n" << index << std::endl;
+            std::cout << "return :\n" << _return << std::endl;
+        }
         ~location();
 };
 
@@ -152,7 +163,6 @@ int location::Index(location &location, std::vector<std::string> &hold)
 location::~location()
 {}
 
-
 /////////////////////////SERVEEEEER///////////////////////////////
 
 class Server
@@ -161,7 +171,7 @@ class Server
         std::vector<u_int16_t>  listen;
         std::string  host;
         std::vector <std::string>  server_name;
-        std::map <int, std::string> error_page;
+        std::map <std::string, std::string> error_page;
         int  max_body;
         std::string  root;
         std::string  index;
@@ -169,6 +179,7 @@ class Server
         std::vector<int > fd_sock; //client
         std::vector<int > server_sock;
         //std::vector<SA_I> seraddr_s;
+        std::vector <Server> servers;
         struct my_func
         {
             std::string key;
@@ -185,6 +196,7 @@ class Server
         Server(char *config_file);
         ~Server();
         int    get_listen(Server &server, std::vector<std::string> &hold);
+        int    get_error_page(Server &server, std::vector<std::string> &hold);
         int    get_host(Server &server, std::vector<std::string> &hold);
         int    get_server_name(Server &server, std::vector<std::string> &hold);
         int    get_max_body(Server &server, std::vector<std::string> &hold);
@@ -276,15 +288,23 @@ int   Server::get_index(Server &server, std::vector<std::string> &hold)
     server.index = hold[1];
     return(1);
 }
+int Server::get_error_page(Server &server, std::vector<std::string> &hold)
+{
+    if (hold.size() != 4)
+        return 0;
+    server.error_page.insert(std::pair<std::string, std::string>(hold[1], hold[3]));
+    return (1);
+}
 
 Server::Server(char *config_file) : Server()
 {
     std::ifstream c_file(config_file);
     std::string line;    
-    my_func pointer_to_fun[6] = {
+    my_func pointer_to_fun[7] = {
         {"listen", &Server::get_listen},
         {"host", &Server::get_host},
         {"server_name", &Server::get_server_name},
+        {"error_page", &Server::get_error_page},
         {"max_body", &Server::get_max_body},
         {"root", &Server::get_root},
         {"index", &Server::get_index}  
@@ -301,77 +321,128 @@ Server::Server(char *config_file) : Server()
     };
 
     int j = 0;
-    
+    int location_flag ;
     while (std::getline(c_file, line))
     {
         if (line == "server{")
         {   
             Server serv;
-            while(std::getline(c_file, line))
+            location_flag = 0;
+            while (std::getline(c_file, line))
             {
                 std::vector<std::string> holder;
                 ft_split(line, " ", holder);
-                for (int i = 0; i < 6; i++)
+                //int flag = 0;
+                if (!location_flag)
                 {
-                    if (pointer_to_fun[i].key == holder[0])
+                    int flag = 0;
+                    for (int i = 0; i < 7; i++)
                     {
-                        if (!(this->*(pointer_to_fun[i].my_function))(serv, holder))
-                            throw error_config();
-                    }    
-                }
-                if (holder[0] == "location")
-                {
-                    location loc;
-                    loc.name(loc, holder);
-                    int counter = 0;
-                    std::getline(c_file, line);
-                    if (line != "{")
-                        throw error_config();
-                    while(std::getline(c_file, line))
-                    {
-                        for (int i = 0; i < 7; i++)
+                        if (pointer_to_fun[i].key == holder[0])
                         {
-                            if (ptr[i].key_location == holder[0])
+                            flag = 1;    
+                            if (!(this->*(pointer_to_fun[i].my_function))(serv, holder))
                             {
-                                counter++;
-                                if (!(loc.*(ptr[i].my_func))(loc, holder))
-                                    throw error_config();
-                            }    
+                                std::cout << "0"<< std::endl;
+                                throw error_config();
+                            }
                         }
-                        if (counter == 7)
-                            break;
                     }
-                    std::getline(c_file, line);
-                    if (line != "}")
-                        throw error_config();
+                    if (!flag)
+                        location_flag = 1;
                 }
-                else if (holder[0] == "};")
-                    break;
-                else
-                    throw error_config();            
+                if (location_flag)
+                {
+                    if (holder[0] == "location")//location scop;
+                    {
+                        location loc;
+                        loc.name(loc, holder);
+                        std::getline(c_file, line);
+                        std::vector<std::string> holder;
+                        ft_split(line, " ", holder);
+                        if (holder[0] != "{")
+                        {
+                            std::cout << "1"<< std::endl;
+                            throw error_config();
+                        }
+                        while(std::getline(c_file, line))
+                        {
+                            std::vector<std::string> holder;
+                            ft_split(line, " ", holder);
+                            int flag = 0;
+                            for (int i = 0; i < 7; i++)
+                            {
+                                if (ptr[i].key_location == holder[0])
+                                {
+                                    flag = 1;
+                                    if (!(loc.*(ptr[i].my_func))(loc, holder))
+                                    {
+                                        std::cout << "2"<< std::endl;
+                                        throw error_config();
+                                    }
+                                }    
+                            }
+                            if (!flag)
+                            {
+                                if (holder[0] != "}")
+                                {
+                                    std::cout << holder[0]<< std::endl;
+                                    throw error_config();
+                                }
+                                serv.locations.push_back(loc);
+                                break;
+                            }
+                        }
+                    }
+                    else if (holder[0] == "};")
+                    {
+                        this->servers.push_back(serv);
+                        break;
+                    }
+                    else
+                    {
+                        std::cout << holder[0] << std::endl;
+                        throw error_config();
+                    }
+                }
             }
-
         }
         else
+        {
+            std::cout << "5"<< std::endl;
             throw error_config();
-        j++;
-        if (j == 7)
-            break ;
+        }
     }
-    {
-        std::cout << "listen :"<< std::endl;
-        std::vector<u_int16_t>::iterator iter = serv.listen.begin();
-        for(iter; iter < serv.listen.end(); iter++)
-            std::cout << *iter << " ";
-        std::cout << std::endl;
-        std::cout << "host : \n" << serv.host << std::endl;
-        std::vector<std::string>::iterator it1 = serv.server_name.begin();
-        for(it1; it1 < serv.server_name.end(); it1++)
-            std::cout << "server_name :\n" << *it1 << std::endl;
-        std::cout << "max_body :\n" << serv.max_body << std::endl;
-        std::cout << "root :\n" << serv.root << std::endl;
-        std::cout << "index :\n" << serv.index << std::endl;
-    }
+        for (int i = 0 ; i < servers.size(); i++)
+        {
+            std::cout << "Server" << i <<"_______________________----------" <<std::endl;
+            std::cout << "listen :"<< std::endl;
+            std::vector<u_int16_t>::iterator iter = servers[i].listen.begin();
+            for(iter; iter < servers[i].listen.end(); iter++)
+                std::cout << *iter << " ";
+            std::cout << std::endl;
+            std::cout << "host : \n" << servers[i].host << std::endl;
+            std::vector<std::string>::iterator it1 = servers[i].server_name.begin();
+            for(it1; it1 < servers[i].server_name.end(); it1++)
+                std::cout << "server_name :\n" << *it1 << std::endl;
+            std::map<std::string , std::string>::iterator it = servers[i].error_page.begin();
+            std::cout << "error_page :\n";
+            while (it !=  servers[i].error_page.end())
+            {
+                std::cout << it->first << " :: " << it->second << std::endl;
+                it++;
+            }
+            std::cout << "max_body :\n" << servers[i].max_body << std::endl;
+            std::cout << "root :\n" << servers[i].root << std::endl;
+            std::cout << "index :\n" << servers[i].index << std::endl;
+            std::vector<location>::iterator itr = servers[i].locations.begin();
+            for(itr; itr < servers[i].locations.end(); itr++)
+            {
+                std::cout << "loactions**************************** :\n";
+                itr->print();
+            }
+        }
+
 }
 
 Server::~Server(){
