@@ -1,4 +1,4 @@
-#include "location.hpp"
+#include "server.hpp"
 
 location::location()
 {
@@ -64,6 +64,8 @@ int location::name(location &location, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
+    if(hold[1] != "/" && hold[1][0] == '/')
+        throw error_config();
     location.NAME = hold[1];
     return 1;
 }

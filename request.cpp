@@ -492,7 +492,7 @@ int DeleteDirectoryRecursive(const char *path)
 void Request::Delete_methode()
 {
     struct stat fileStat;
-    std::vector<std::string> paths_to_delete;
+    //std::vector<std::string> paths_to_delete;
 
     if (access(target.c_str(), F_OK) == 0)
     {
@@ -582,7 +582,7 @@ Request::Request(std::string req, Server server)
     content_lenght = "";
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
-   
+   // std::cout << "target = " << target << std::endl;
     if (filmap)
     {
         status = "400";
@@ -593,10 +593,11 @@ Request::Request(std::string req, Server server)
     fill_headers(StoreHeaders, myHeaders);
     
    //print Headers
-    for (int i = 0; i < StoreHeaders.size(); i++)
-        std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
-    
+    //for (int i = 0; i < StoreHeaders.size(); i++)
+    //   std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    //
     Request::error_handling(server);
+   // std::cout << "target 1 = " << target << std::endl;
     
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
@@ -606,51 +607,47 @@ Request::Request(std::string req, Server server)
         this->endOfrequest = 0;
         Request::get_post_status();
     }
+
     if (status != "200")
         this->endOfrequest = 1;
 
     if (status == "200" && access(target.c_str(), F_OK) == -1)
         status = "404";
+    struct stat fileStat;
+    //std::vector<std::string> paths_to_delete;
 
+    if (access(target.c_str(), F_OK) == 0)
+    {
+        if (stat(target.c_str(), &fileStat) == 0)
+        {
+            if (S_ISDIR(fileStat.st_mode))
+            {
+                if(target[target.length() - 1] != '/')
+                    status = "404"; 
+            }
+        }
+    }
     if (method == "DELETE" && status == "200")
     {
         Request::Delete_methode();
         if (status == "200")
             target = "error/200.html";
     }
+    
     if (method == "GET")
         get_flag = 1;
-    if (status == "200")
-    {
-        struct stat fileStat;
-
-        if (stat(target.c_str(), &fileStat) == 0)
-        {
-            if (S_ISDIR(fileStat.st_mode))
-            {
-                int pos = target.length();
-                if (target[pos - 1] != '/')
-                {
-                    target.append("/");
-                    // status = "301";
-                }
-            }
-        }
-    }
+    
     Request::get_target_page();
+    
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
         content_lenght = "CONTENT_LENGTH=" + valueOfkey("Content-Length", StoreHeaders);
     }
-    // std::cout << "file_name = " << outfile_name << std::endl;
-    // std::cout << "status = "<< status << std::endl;
-    // std::cout << "target = " << target << std::endl;
-    // std::cout << "post = " << Post_status << std::endl;
-    // std::cout << "post->" << this->target<<std::endl;
-  
+    
     this->accept = valueOfkey("Accept", StoreHeaders);
-}
+    //std::cout << "target final" << target << std::endl;
+} 
 
 Request::~Request()
 {

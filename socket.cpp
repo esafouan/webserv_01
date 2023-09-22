@@ -445,8 +445,14 @@ std::string generateDirectoryListing(const std::string &directoryPath,  std::map
                else 
                 {
                     haha = get_last(directoryPath);
-                    // std::cout << "pile = "<< haha + entryName << std::endl;
-                    htmlStream << "<p><a href=\"" << haha <<entryName << "\">" << entryName << "</a></p>\n";
+
+                    struct stat fileStat;
+                    if (stat((haha + entryName).c_str(), &fileStat) == 0)
+                    {
+                        if (S_ISDIR(fileStat.st_mode))
+                            entryName += "/";
+                    }
+                    htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
                 }
             }
         }
@@ -648,7 +654,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     }
     else if(req[client_fd].status == "301")
     {
-        std::cout <<"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
+        std::cout << "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
         std::string response_header = redirect_header(req[client_fd].target, req[client_fd].status);
         write(client_fd, response_header.c_str(), response_header.size());
         return 0;

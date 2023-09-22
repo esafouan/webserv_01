@@ -28,16 +28,35 @@ void Server::ft_split(std::string input, std::string delimiter, std::vector<std:
             parts.push_back(tmp);
 }
 
+int check_digits(std::string hold)
+{
+    int i = 0;
+
+    while (hold[i])
+        if(!isdigit(hold[i++]))
+            return 0;
+    return 1;
+}
+
 int   Server::get_listen(Server &server, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
+    if (!check_digits(hold[1]))
+        return 0;
+    if (hold[1].length() > 6)
+        return 0;
+    int listen = atoi(hold[1].c_str());
+
+    if (listen > 65335 || listen < 0)
+        return 0;
+    
     SA_I s;
-  
+
     server.server_sock.push_back(-1);
     memset(&s,0,sizeof(s));
     server.seraddr_s.push_back(s);
-    server.listen.push_back((u_int16_t)atoi(hold[1].c_str()));
+    server.listen.push_back((u_int16_t)listen);
     return(1);
 }
 
@@ -45,6 +64,22 @@ int   Server::get_host(Server &server, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
+    std::vector<std::string> host;
+
+    Server::ft_split(hold[1], ".", host);
+    if (host.size() != 4)
+        return 0;
+    int i = 0;
+    while(i < host.size())
+    {
+        if (!check_digits(host[i]))
+            return 0;
+        else if (host[i].length() > 3)
+            return 0;
+        else if (atoi(host[i].c_str()) > 255 || atoi(host[i].c_str()) < 0)
+            return 0;
+        i++;
+    }
     server.host = hold[1];
     return(1);
 }
@@ -61,7 +96,14 @@ int   Server::get_max_body(Server &server, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
-    server.max_body = atoi(hold[1].c_str());
+    if(!check_digits(hold[1]))
+        return 0;
+    if (hold[1].length() > 10)
+        return 0;
+    int max = atoi(hold[1].c_str());
+    if (max > 2000000000)
+        return 0;
+    server.max_body = max;
     return(1);
 }
 
@@ -174,7 +216,7 @@ Server::Server(char *config_file)
                                     flag = 1;
                                     if (!(loc.*(ptr[i].my_func))(loc, holder))
                                     {
-                                        std::cout << "2"<< std::endl;
+                                        std::cout << "2" << std::endl;
                                         throw error_config();
                                     }
                                 }    
