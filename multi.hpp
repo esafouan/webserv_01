@@ -67,6 +67,7 @@ class Request
 
         std::string content_type;
         std::string content_lenght;
+        std::string accept;
     public :
         static int num_file;
         Request(std::string req, Server server);

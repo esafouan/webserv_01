@@ -91,6 +91,7 @@ int Server::get_error_page(Server &server, std::vector<std::string> &hold)
 Server::Server(char *config_file)
 {
     std::ifstream c_file(config_file);
+    // if(c_file)
     std::string line;    
     my_func pointer_to_fun[7] = {
         {"listen", &Server::get_listen},
@@ -149,6 +150,7 @@ Server::Server(char *config_file)
                     {
                         location loc;
                         loc.name(loc, holder);
+                        
                         std::getline(c_file, line);
                         std::vector<std::string> holder;
                         Server::ft_split(line, " ", holder);
@@ -161,9 +163,12 @@ Server::Server(char *config_file)
                         {
                             std::vector<std::string> holder;
                             Server::ft_split(line, " ", holder);
+                            if(holder.size() == 0)
+                                throw error_config();
                             int flag = 0;
                             for (int i = 0; i < 7; i++)
                             {
+                               // std::cout << holder[0]<< std::endl;
                                 if (ptr[i].key_location == holder[0])
                                 {
                                     flag = 1;
@@ -178,7 +183,6 @@ Server::Server(char *config_file)
                             {
                                 if (holder[0] != "}")
                                 {
-                                    std::cout << holder[0]<< std::endl;
                                     throw error_config();
                                 }
                                 serv.locations.push_back(loc);
@@ -192,10 +196,7 @@ Server::Server(char *config_file)
                         break;
                     }
                     else
-                    {
-                        std::cout << holder[0] << std::endl;
                         throw error_config();
-                    }
                 }
             }
         }

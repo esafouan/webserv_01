@@ -50,9 +50,9 @@ std::string get_content_type(const char *path)
             return "image/jpeg";
         if (strcmp(last_dot, ".jpg") == 0)
             return "image/jpeg";
-        if (strcmp(last_dot, ".js") == 0)
-            return "application/javascript";
-        if (strcmp(last_dot, ".json") == 0)
+        if (strcmp(last_dot, ".py") == 0)
+            return "application/python";
+        if (strcmp(last_dot, ".pyon") == 0)
             return "application/json";
         if (strcmp(last_dot, ".png") == 0)
             return "image/png";
@@ -62,6 +62,8 @@ std::string get_content_type(const char *path)
             return "image/svg+xml";
         if (strcmp(last_dot, ".txt") == 0)
             return "text/plain";
+        if (strcmp(last_dot, ".php") == 0)
+            return "application/x-httpd-php";
     }
     return "";
 }
@@ -100,12 +102,11 @@ int main(int ac, char **av)
         }
         run(serv.servers,&ep);
     }
-    catch(...)
+    catch(std::exception &ex)
     {
-
+        std::cout << ex.what() << std::endl;
     }
     
 
     
 }
-

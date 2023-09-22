@@ -369,7 +369,7 @@ void Request::get_post_status()
     // }
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")
     {
-        if (target.find(".php") != target.npos || target.find(".js") != target.npos)
+        if (target.find(".cpp") != target.npos || target.find(".py") != target.npos)
             outfile_name = "directorie/upload/" + get_current_time() + ".txt";
         else
             outfile_name = "directorie/upload/" + get_current_time() + extension;
@@ -386,7 +386,7 @@ void Request::get_post_status()
 
     else
     {
-        if (target.find(".php") != target.npos || target.find(".js") != target.npos)
+        if (target.find(".cpp") != target.npos || target.find(".py") != target.npos)
             outfile_name = "directorie/upload/" + get_current_time() + ".txt";
         else
             outfile_name = "directorie/upload/" + get_current_time() + extension;
@@ -415,9 +415,9 @@ std::string generate_extention(std::string content_type)
     else if (content_type.find("image/jpeg") != std::string::npos)
         return (".jpg");
     else if (content_type.find("application/javascript") != std::string::npos)
-        return (".js");
+        return (".py");
     else if (content_type.find("application/json") != std::string::npos)
-        return (".json");
+        return (".pyon");
     else if (content_type.find("image/png") != std::string::npos)
         return (".png");
     else if (content_type.find("application/pdf") != std::string::npos)
@@ -582,7 +582,7 @@ Request::Request(std::string req, Server server)
     content_lenght = "";
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
-
+   
     if (filmap)
     {
         status = "400";
@@ -591,12 +591,13 @@ Request::Request(std::string req, Server server)
     get_query(target, query);
     uri_for_response = target;
     fill_headers(StoreHeaders, myHeaders);
-
-    // print Headers
-    // for (int i = 0; i < StoreHeaders.size(); i++)
-        // std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
-
+    
+   //print Headers
+    for (int i = 0; i < StoreHeaders.size(); i++)
+        std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    
     Request::error_handling(server);
+    
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     extension = generate_extention(valueOfkey("Content-Type", StoreHeaders));
 
@@ -647,6 +648,8 @@ Request::Request(std::string req, Server server)
     // std::cout << "target = " << target << std::endl;
     // std::cout << "post = " << Post_status << std::endl;
     // std::cout << "post->" << this->target<<std::endl;
+  
+    this->accept = valueOfkey("Accept", StoreHeaders);
 }
 
 Request::~Request()

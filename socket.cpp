@@ -54,9 +54,9 @@ std::string get_extension(std::string content_type)
     else if (content_type.find("image/jpeg") != std::string::npos)
         return (".jpg");
     else if (content_type.find("application/javascript") != std::string::npos)
-        return (".js");
+        return (".py");
     else if (content_type.find("application/json") != std::string::npos)
-        return (".json");
+        return (".pyon");
     else if (content_type.find("image/png") != std::string::npos)
         return (".png");
     else if (content_type.find("application/pdf") != std::string::npos)
@@ -276,7 +276,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     std::string pt;
 
                     pt = time_tmp + get_file_extension(str);              
-                    if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".js") != req[client_fd].target.npos)
+                    if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".py") != req[client_fd].target.npos)
                     pt += ".txt";
                     req[client_fd].outfile_name = "directorie/upload/" + pt;
                     req[client_fd].outfile.open(("directorie/upload/" + pt).c_str() , std::ios::binary);
@@ -312,7 +312,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                             try
                             {
                                 pt = time_tmp + get_file_extension(str);        
-                                if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".js") != req[client_fd].target.npos)
+                                if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".py") != req[client_fd].target.npos)
                                     pt += ".txt";
                                 req[client_fd].outfile_name = "directorie/upload/" + pt;
                             }
@@ -530,48 +530,57 @@ void pages(std::string file_open,int client_fd,std::string status,std::string ou
 
 struct cgi_args
 {
-    char *args[3];
-    char *env[6];
+    char *args[10];
+    char *env[10];
 };
 
 void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
 {
     std::string script;
+    std::string path;
 
-    script = "SCRIPT_FILENAME=" + req[client_fd].target;
-    //args
+    script = "SCRIPT_FILENAME=/nfs/homes/esafouan/Desktop/4SepWEbserve/" + req[client_fd].target ;
+    path = "PATH_INFO=/nfs/homes/esafouan/Desktop/4SepWEbserve/" + req[client_fd].target ;//req[client_fd].target
+
+    //std::cerr << "URI -> " << req[client_fd].target << std::endl;
+  
     if ((req[client_fd].target.find(".php")) != std::string::npos)
-        cgi->args[0] = (char*)"/usr/bin/php-cgi" ;
+        cgi->args[0] = (char*)"/usr/bin/php";
     else
-        cgi->args[0] = (char*)"/usr/bin/node" ;
+        cgi->args[0] = (char*)"/usr/bin/python3.10" ;
     cgi->args[1] = (char*)req[client_fd].target.c_str();
     cgi->args[2] = NULL;
     //env
     if (req[client_fd].method == "GET")
     {
+        //std::cout << "here 1"<<std::endl;
         cgi->env[0] =(char *)"REQUEST_METHOD=GET" ;
-
         cgi->env[1] = (char *)req[client_fd].query.c_str();
         cgi->env[2] = (char*)"REDIRECT_STATUS=200";
         cgi->env[3] = (char*)script.c_str();
-        cgi->env[4] = NULL;
+        cgi->env[4] = (char *)path.c_str();
+        cgi->env[5] = (char *)req[client_fd].accept.c_str();
+        cgi->env[6] = NULL;
     }
     else if (req[client_fd].method == "POST")
     {
+        std::cout << "here 3"<<std::endl;
+
         cgi->env[0] =(char *)"REQUEST_METHOD=POST" ;
         cgi->env[1] = (char *)req[client_fd].content_lenght.c_str();
-        
         cgi->env[2] = (char *)req[client_fd].content_type.c_str();
         cgi->env[3] = (char*)"REDIRECT_STATUS=200";
         cgi->env[4] = (char*)script.c_str();
-        cgi->env[5] = NULL;
+        cgi->env[5] = (char *)path.c_str();
+        cgi->env[6] = NULL;
     }
 }
-
+#include <sys/types.h>
+#include <sys/wait.h>
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
-    if((req[client_fd].target.find(".php")) != std::string::npos || (req[client_fd].target.find(".js")) != std::string::npos)
+    if((req[client_fd].target.find(".php")) != std::string::npos || (req[client_fd].target.find(".py")) != std::string::npos)
     {
         int pipefd[2];
 
@@ -584,6 +593,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
 
         if (pid == -1)
         {
+            std::cerr << "HERE !" << std::endl;
             perror("fork");
             exit(EXIT_FAILURE);
         }
@@ -599,35 +609,33 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
             if(req[client_fd].method == "POST")
             {
                  fd = open(req[client_fd].outfile_name.c_str(),O_RDONLY);
-                // char buffer[4096];
-                // read(fd,buffer,4096);
-                // std::cout << buffer << std::endl;
                 if(dup2(fd, 0)== -1)
                     std::cerr << "hehe " <<std::endl;
-
                 close (fd);
             }   
             fill_envirements(&args, req, client_fd);
-            execve(args.args[0], args.args, args.env);
-            perror("exec = ");
+            if (execve(args.args[0], args.args, args.env) == -1)
+            {
+                std::cerr << "HERE !" << std::endl;
+                perror("exec = ");
+            }
         } 
         else 
         { 
+            sleep(1);
+            pid_t retwait = waitpid(pid, 0, WNOHANG);
+            if (retwait == 0)
+                kill(pid, SIGKILL);
             close(pipefd[1]); 
             char buffer[4096];
             ssize_t bytesRead;
-            int status;
-            waitpid(-1, &status, 0);
-            if (WIFEXITED(status)){
-              while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0)
-                {
-                    std::string response_header = construct_error_page("text/html",bytesRead ,req[client_fd].status);
-                    write(client_fd, response_header.c_str(), response_header.size());
-                    write(client_fd,buffer,bytesRead);
-                }
+          
+            while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0)
+            {
+                std::string response_header = construct_error_page("text/html",bytesRead ,req[client_fd].status);
+                write(client_fd, response_header.c_str(), response_header.size());
+                write(client_fd,buffer,bytesRead);
             }
-            else
-                std::cerr << "didnt exit" << std::endl;
             close(pipefd[0]); 
         }
         return 0;
@@ -640,6 +648,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     }
     else if(req[client_fd].status == "301")
     {
+        std::cout <<"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
         std::string response_header = redirect_header(req[client_fd].target, req[client_fd].status);
         write(client_fd, response_header.c_str(), response_header.size());
         return 0;
