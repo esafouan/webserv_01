@@ -215,6 +215,7 @@ void Request::error_handling(Server &serv)
 {
     if ((method == "GET" && serv.locations[0].GET == false) || (method == "POST" && serv.locations[0].POST == false) || (method == "DELETE" && serv.locations[0].DELETE == false))
         status = "405";
+    
     else if (method != "GET" && method != "DELETE" && method != "POST")
     {
         if (method == "PUT" || method == "HEAD" || method == "TRACE" || method == "CONNECT")
@@ -222,8 +223,10 @@ void Request::error_handling(Server &serv)
         else
             status = "404";
     }
+    
     else if (target.size() > 2048)
         status = "414";
+    
     else
     {
         int flag = 0;
@@ -238,6 +241,7 @@ void Request::error_handling(Server &serv)
         else if (count_slash(target) >= 1)
             long_uri(target, serv, &flag_uri);
     }
+
     // if (find_key("Content-Length", StoreHeaders))
     // {
     //     std::string val = valueOfkey("Content-Length", StoreHeaders);
@@ -249,13 +253,17 @@ void Request::error_handling(Server &serv)
     //         error("413 Request Entity Too Large");
     //     }
     // }
+    
     if (httpVersion != "HTTP/1.1")
         status = "400";
+    
     else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")
 
         status = "501";
+    
     else if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
         status = "400";
+    
     else if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
         status = "400";
 }
@@ -301,6 +309,8 @@ Request &Request::operator=(Request const &req)
     outfile.open(req.outfile_name.c_str());
     this->still_reading = req.still_reading;
     this->epol = req.epol;
+    this->cgi_flag = req.cgi_flag;
+
     return (*this);
 }
 
@@ -527,22 +537,32 @@ void Request::Delete_methode()
         status = "404";
 }
 
-void Request::get_target_page()
+void Request::fill_error_pages_map()
 {
-    if (status == "400")
-        target = "error/400.html";
-    else if (status == "401")
-        target = "error/401.html";
-    else if (status == "403")
-        target = "error/403.html";
-    else if (status == "404")
-        target = "error/404.html";
-    else if (status == "500")
-        target = "error/500.html";
-    else if (status == "501")
-        target = "error/501.html";
-    else if (status == "503")
-        target = "error/503.html";
+    pages.insert(std::pair<std::string, std::string>("400", "error/400.html"));
+    pages.insert(std::pair<std::string, std::string>("401", "error/401.html"));
+    pages.insert(std::pair<std::string, std::string>("403", "error/403.html"));
+    pages.insert(std::pair<std::string, std::string>("404", "error/404.html"));
+    pages.insert(std::pair<std::string, std::string>("500", "error/500.html"));
+    pages.insert(std::pair<std::string, std::string>("501", "error/501.html"));
+    pages.insert(std::pair<std::string, std::string>("503", "error/503.html"));
+}
+
+void Request::fill_extensions_map()
+{
+    extensions.insert(std::pair<std::string, std::string>("text/css",".css"));
+    extensions.insert(std::pair<std::string, std::string>("video/mp4",".mp4"));
+    extensions.insert(std::pair<std::string, std::string>("text/csv",".csv"));
+    extensions.insert(std::pair<std::string, std::string>("image/gif",".gif"));
+    extensions.insert(std::pair<std::string, std::string>("text/html", ".html"));
+    extensions.insert(std::pair<std::string, std::string>("image/x-icon",".ico"));
+    extensions.insert(std::pair<std::string, std::string>("image/jpeg",".jpeg"));
+    extensions.insert(std::pair<std::string, std::string>("application/javascript",".js"));
+    extensions.insert(std::pair<std::string, std::string>("application/json",".json"));
+    extensions.insert(std::pair<std::string, std::string>("image/png",".png"));
+    extensions.insert(std::pair<std::string, std::string>("application/pdf", ".pdf"));
+    extensions.insert(std::pair<std::string, std::string>("image/svg+xml",".svg"));
+    extensions.insert(std::pair<std::string, std::string>("text/plain", ".txt"));
 }
 
 void get_query(std::string &uri, std::string &query)
@@ -567,22 +587,24 @@ Request::Request(std::string req, Server server)
     this->fd_file = -1;
     this->endOfrequest = 1;
     this->lenght_Readed = 0;
-    calcul_chunk_flag = 0;
-    Bytes_readed = 1024;
+    this->calcul_chunk_flag = 0;
+    this->Bytes_readed = 1024;
     this->open_boundry_file = 0;
     this->chunk_size = 0;
     this->rest_of_buffer = "";
-    rest_of_boundry = "";
-    flag_uri = 0;
-    time = "";
-    get_flag = 0;
-    cgi_body = "";
-    content_type = "";
-    epol = 1;
-    content_lenght = "";
+    this->rest_of_boundry = "";
+    this->flag_uri = 0;
+    this->time = "";
+    this->get_flag = 0;
+    this->cgi_body = "";
+    this->content_type = "";
+    this->epol = 1;
+    this->content_lenght = "";
+    this->cgi_flag = 0;
+    
     ft_split(req, "\r\n", myHeaders);
     fill_type(method, target, httpVersion, myHeaders, &filmap);
-   // std::cout << "target = " << target << std::endl;
+   
     if (filmap)
     {
         status = "400";
@@ -596,7 +618,8 @@ Request::Request(std::string req, Server server)
     //for (int i = 0; i < StoreHeaders.size(); i++)
     //   std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     //
-    Request::error_handling(server);
+    Request::error_handling(server); 
+    
    // std::cout << "target 1 = " << target << std::endl;
     
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
@@ -622,11 +645,16 @@ Request::Request(std::string req, Server server)
         {
             if (S_ISDIR(fileStat.st_mode))
             {
-                if(target[target.length() - 1] != '/')
-                    status = "404"; 
+                if (target[target.length() - 1] != '/')
+                {
+                    status = "301"; 
+                    target += "/";
+                    std::cout << "target = " << target << std::endl;
+                }
             }
         }
     }
+
     if (method == "DELETE" && status == "200")
     {
         Request::Delete_methode();
@@ -637,16 +665,28 @@ Request::Request(std::string req, Server server)
     if (method == "GET")
         get_flag = 1;
     
-    Request::get_target_page();
-    
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
         content_lenght = "CONTENT_LENGTH=" + valueOfkey("Content-Length", StoreHeaders);
     }
-    
     this->accept = valueOfkey("Accept", StoreHeaders);
-    //std::cout << "target final" << target << std::endl;
+
+
+    Request::fill_error_pages_map();
+    //default error page
+    if (status != "200" && status != "301")
+    {
+        if(server.error_page.find(status) != server.error_page.end())
+        {
+            target = server.error_page[status];
+            std::cout <<  "HHERE"<< std::endl;
+        }
+        else
+            target = pages[status];
+    }
+        
+    
 } 
 
 Request::~Request()

@@ -36,6 +36,7 @@ class Request
         int lenght_Readed;
         int lenght_of_content;
         int calcul_chunk_flag;
+        int cgi_flag;
         size_t chunk_size;
         size_t Bytes_readed;
         std::string rest_of_boundry;
@@ -68,6 +69,9 @@ class Request
         std::string content_type;
         std::string content_lenght;
         std::string accept;
+
+        std::map<std::string, std::string>pages;
+        std::map<std::string, std::string> extensions;
     public :
         static int num_file;
         Request(std::string req, Server server);
@@ -76,12 +80,15 @@ class Request
         Request& operator=(Request const & req);
         void print_element();
         void error_handling(Server &serv);
-        ~Request();
+       
         void creating_file(std::vector<std::pair<std::string, std::string> > &postReq, std::string &bod);
         void get_post_status();
         void Delete_methode();
-        void get_target_page();
-        void cgi_information();
+        void fill_error_pages_map();
+        void cgi_information(); 
+        void fill_extensions_map();
+
+        ~Request();
 };
 
 

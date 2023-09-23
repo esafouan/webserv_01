@@ -444,10 +444,10 @@ std::string generateDirectoryListing(const std::string &directoryPath,  std::map
                } 
                else 
                 {
-                    haha = get_last(directoryPath);
-
+                    // haha = get_last(directoryPath);
                     struct stat fileStat;
-                    if (stat((haha + entryName).c_str(), &fileStat) == 0)
+                    // std::cerr << directoryPath + entryName <<std::endl;
+                    if (stat((directoryPath + entryName).c_str(), &fileStat) == 0)
                     {
                         if (S_ISDIR(fileStat.st_mode))
                             entryName += "/";
@@ -480,6 +480,7 @@ std::string construct_error_page(const std::string &contentType, size_t contentL
     header += "Content-Type: " + contentType + "\r\n";
     std::stringstream contentLengthStream;
     contentLengthStream << contentLength;
+    std::cerr << contentLength << std::endl;
     header += "Content-Length: " + contentLengthStream.str() + "\r\n";
     // Blank line
     header += "\r\n";
@@ -491,7 +492,7 @@ std::string redirect_header(std::string target,std::string status)
 {
    std::string header;
 
-    
+    // std::cerr << target << std::endl;
     // Status line
     header += "HTTP/1.1 ";
     header += status;
@@ -513,27 +514,30 @@ void pages(std::string file_open,int client_fd,std::string status,std::string ou
 {
     size_t file_size;
   
+    std::cout << "here " << std::endl;
+    std::ifstream fd_file(file_open.c_str());
+    fd_file.seekg(0, std::ios::end);
 
-    int fd_file = open(file_open.c_str(), O_RDONLY);
-    file_size = lseek(fd_file, 0, SEEK_END);
-    lseek(fd_file, 0, SEEK_SET);
-    std::string response_header = construct_error_page("text/html", file_size,status);
+    // Get the position, which is the size of the file
+    std::streampos fileSize = fd_file.tellg();
+    fd_file.seekg(0, std::ios::beg);
+    std::string response_header = construct_error_page("text/html", (size_t)fileSize,status);
     write(client_fd, response_header.c_str(), response_header.size());
     const size_t buffer_size = 1024;
     char buffer[buffer_size];
-    ssize_t bytes_read;
-    if ((bytes_read = read(fd_file, buffer, buffer_size)) > 0)
+    if (fd_file.read(buffer, (size_t)fileSize))
     {
-        ssize_t bytes_sent = write(client_fd, buffer, bytes_read);
+        ssize_t bytes_sent = write(client_fd, buffer, (size_t)fileSize);
         if (bytes_sent == -1)
         {
             std::remove(outfile_name.c_str());
             err("Error sending data1");
         }
     }
-    close(fd_file);
+    else
+        perror("ss : ");
+    fd_file.close();
 }
-
 struct cgi_args
 {
     char *args[10];
@@ -545,13 +549,13 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
     std::string script;
     std::string path;
 
-    script = "SCRIPT_FILENAME=/nfs/homes/esafouan/Desktop/4SepWEbserve/" + req[client_fd].target ;
-    path = "PATH_INFO=/nfs/homes/esafouan/Desktop/4SepWEbserve/" + req[client_fd].target ;//req[client_fd].target
+    script = "SCRIPT_FILENAME=" + req[client_fd].target ;
+    path = "PATH_INFO=" + req[client_fd].target ;//req[client_fd].target
 
     //std::cerr << "URI -> " << req[client_fd].target << std::endl;
   
     if ((req[client_fd].target.find(".php")) != std::string::npos)
-        cgi->args[0] = (char*)"/usr/bin/php";
+        cgi->args[0] = (char*)"/usr/bin/php-cgi";
     else
         cgi->args[0] = (char*)"/usr/bin/python3.10" ;
     cgi->args[1] = (char*)req[client_fd].target.c_str();
@@ -563,14 +567,13 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[0] =(char *)"REQUEST_METHOD=GET" ;
         cgi->env[1] = (char *)req[client_fd].query.c_str();
         cgi->env[2] = (char*)"REDIRECT_STATUS=200";
-        cgi->env[3] = (char*)script.c_str();
-        cgi->env[4] = (char *)path.c_str();
+        cgi->env[3] = strdup(script.c_str());
+        cgi->env[4] = strdup(path.c_str());
         cgi->env[5] = (char *)req[client_fd].accept.c_str();
         cgi->env[6] = NULL;
     }
     else if (req[client_fd].method == "POST")
     {
-        std::cout << "here 3"<<std::endl;
 
         cgi->env[0] =(char *)"REQUEST_METHOD=POST" ;
         cgi->env[1] = (char *)req[client_fd].content_lenght.c_str();
@@ -578,11 +581,16 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[3] = (char*)"REDIRECT_STATUS=200";
         cgi->env[4] = (char*)script.c_str();
         cgi->env[5] = (char *)path.c_str();
-        cgi->env[6] = NULL;
+        cgi->env[6] = (char *)req[client_fd].accept.c_str();
+        cgi->env[7] = NULL;
     }
 }
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <iostream>
+#include <fstream>
+#include <fcntl.h>
+#include <unistd.h>
 int response(epol *ep, int client_fd, std::map<int, Request> &req)
 {
     signal(SIGPIPE, SIG_IGN);
@@ -593,15 +601,13 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
         if (pipe(pipefd) == -1)
         {
             perror("pipe");
-            exit(EXIT_FAILURE);
+
         }
         pid_t pid = fork();
 
         if (pid == -1)
         {
-            std::cerr << "HERE !" << std::endl;
             perror("fork");
-            exit(EXIT_FAILURE);
         }
 
         if (pid == 0) 
@@ -614,31 +620,32 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
             int fd ;
             if(req[client_fd].method == "POST")
             {
-                 fd = open(req[client_fd].outfile_name.c_str(),O_RDONLY);
-                if(dup2(fd, 0)== -1)
-                    std::cerr << "hehe " <<std::endl;
+                fd = open(req[client_fd].outfile_name.c_str(),O_RDONLY);
+                dup2(fd, 0);
                 close (fd);
             }   
             fill_envirements(&args, req, client_fd);
             if (execve(args.args[0], args.args, args.env) == -1)
             {
-                std::cerr << "HERE !" << std::endl;
                 perror("exec = ");
             }
+            exit(127);
         } 
         else 
         { 
             sleep(1);
+            close(pipefd[1]); 
             pid_t retwait = waitpid(pid, 0, WNOHANG);
             if (retwait == 0)
                 kill(pid, SIGKILL);
-            close(pipefd[1]); 
-            char buffer[4096];
+            
+            char buffer[1000000];
             ssize_t bytesRead;
-          
+            struct stat st;
+            fstat(pipefd[0], &st);
             while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0)
             {
-                std::string response_header = construct_error_page("text/html",bytesRead ,req[client_fd].status);
+                std::string response_header = construct_error_page("image/jpeg",bytesRead ,req[client_fd].status);
                 write(client_fd, response_header.c_str(), response_header.size());
                 write(client_fd,buffer,bytesRead);
             }
@@ -654,7 +661,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     }
     else if(req[client_fd].status == "301")
     {
-        std::cout << "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
+        //std::cout << "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
         std::string response_header = redirect_header(req[client_fd].target, req[client_fd].status);
         write(client_fd, response_header.c_str(), response_header.size());
         return 0;
