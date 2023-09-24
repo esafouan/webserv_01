@@ -1,4 +1,6 @@
-SRC =  multiplexer.cpp request.cpp config_file/location.cpp config_file/server.cpp socket.cpp response_helper.cpp
+SRC =  multiplexer.cpp  socket.cpp response_helper.cpp \
+		Request/FillHeaders.cpp Request/Request.cpp Request/RequestErrors.cpp Request/HandleUri.cpp Request/RequestUtils.cpp Request/PostElements.cpp Request/Delete.cpp\
+		config_file/location.cpp config_file/server.cpp
 OBJ = $(SRC:.cpp=.o)
 CXX = g++
 RM = rm -f

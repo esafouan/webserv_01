@@ -177,17 +177,15 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
     else
     {
         size_t size = req[client_fd].Bytes_readed;
+        //std::cout << req[client_fd].Bytes_readed << std::endl;
         char rec_b[size];
         memset(rec_b, 0, size - 1);
-        //
-        
-
+    
         if (req[client_fd].Post_status == "Bainary/Row")
         {
 
-            if ((n_read = read(client_fd, rec_b, 1999)) > 0)
+            if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
-               
                 req[client_fd].lenght_Readed += n_read;
                 req[client_fd].outfile.write(rec_b, n_read);
                 if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
@@ -197,7 +195,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                    req[client_fd].epol = 0;
                     return;
                 }
-                memset(rec_b, 0, 1999);
+                memset(rec_b, 0, size - 1);
             }
         }
         
@@ -237,10 +235,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                         {
                             memset(tmp,0,n_read);
                             if ((n_read = read(client_fd, tmp, (size - n_read))) > 0)
-                            {
-                                str.append(tmp, n_read);
-                            }
-                                
+                                str.append(tmp, n_read);      
                         }
                         req[client_fd].outfile.write(str.c_str(), str.size());
                         req[client_fd].outfile.flush();
@@ -287,7 +282,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 {
                     
                     int rest = str.length() - req[client_fd].boundary_separater.length();
-                    req[client_fd].outfile.write(str.c_str(), rest);
+                   req[client_fd].outfile.write(str.c_str(), rest);
 
                     req[client_fd].outfile.flush();
                     req[client_fd].rest_of_boundry = str.substr(rest);
@@ -437,12 +432,11 @@ std::string generateDirectoryListing(const std::string &directoryPath,  std::map
            
             if (entryName != "." && entryName != "..")
             {
-                if(req[client_fd].flag_uri == 1)
+                if (req[client_fd].flag_uri == 1)
                 {
-                    
                     htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
-               } 
-               else 
+                }
+                else 
                 {
                     // haha = get_last(directoryPath);
                     struct stat fileStat;
@@ -514,7 +508,6 @@ void pages(std::string file_open,int client_fd,std::string status,std::string ou
 {
     size_t file_size;
   
-    std::cout << "here " << std::endl;
     std::ifstream fd_file(file_open.c_str());
     fd_file.seekg(0, std::ios::end);
 
@@ -569,6 +562,7 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[2] = (char*)"REDIRECT_STATUS=200";
         cgi->env[3] = strdup(script.c_str());
         cgi->env[4] = strdup(path.c_str());
+        
         cgi->env[5] = (char *)req[client_fd].accept.c_str();
         cgi->env[6] = NULL;
     }
@@ -579,8 +573,9 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[1] = (char *)req[client_fd].content_lenght.c_str();
         cgi->env[2] = (char *)req[client_fd].content_type.c_str();
         cgi->env[3] = (char*)"REDIRECT_STATUS=200";
-        cgi->env[4] = (char*)script.c_str();
-        cgi->env[5] = (char *)path.c_str();
+        cgi->env[4] = strdup(script.c_str());
+        cgi->env[5] = strdup(path.c_str());
+        
         cgi->env[6] = (char *)req[client_fd].accept.c_str();
         cgi->env[7] = NULL;
     }
@@ -625,6 +620,8 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
                 close (fd);
             }   
             fill_envirements(&args, req, client_fd);
+            //for(int i = 0;args.env[i];i++)
+             //   std::cerr << args.env[i] << std::endl;
             if (execve(args.args[0], args.args, args.env) == -1)
             {
                 perror("exec = ");
@@ -645,7 +642,9 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
             fstat(pipefd[0], &st);
             while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0)
             {
-                std::string response_header = construct_error_page("image/jpeg",bytesRead ,req[client_fd].status);
+                // std::string response_header = construct_error_page("image/jpeg",bytesRead ,req[client_fd].status);
+                std::string response_header = construct_error_page("text/html",bytesRead ,req[client_fd].status);
+
                 write(client_fd, response_header.c_str(), response_header.size());
                 write(client_fd,buffer,bytesRead);
             }
@@ -661,7 +660,6 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req)
     }
     else if(req[client_fd].status == "301")
     {
-        //std::cout << "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww" << std::endl;
         std::string response_header = redirect_header(req[client_fd].target, req[client_fd].status);
         write(client_fd, response_header.c_str(), response_header.size());
         return 0;
