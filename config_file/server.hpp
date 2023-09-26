@@ -18,6 +18,8 @@ class Server
         std::vector<int > server_sock;
         std::vector<SA_I> seraddr_s;
         std::vector <Server> servers;
+        int location_flag;
+        std::string line; 
         struct my_func
         {
             std::string key;
@@ -33,14 +35,17 @@ class Server
         Server();
         Server(char *config_file);
         ~Server();
+        void print_all();
+        void    fill_server(std::ifstream &c_file, Server &serv ,my_func *pointer_to_fun);
+        int    fill_locations(std::ifstream &c_file, Server &serv , my_location *ptr);
         void    ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts);
-        int    get_listen(Server &server, std::vector<std::string> &hold);
-        int    get_error_page(Server &server, std::vector<std::string> &hold);
-        int    get_host(Server &server, std::vector<std::string> &hold);
-        int    get_server_name(Server &server, std::vector<std::string> &hold);
-        int    get_max_body(Server &server, std::vector<std::string> &hold);
-        int    get_root(Server &server, std::vector<std::string> &hold);
-        int    get_index(Server &server, std::vector<std::string> &hold);
+        int     get_listen(Server &server, std::vector<std::string> &hold);
+        int     get_error_page(Server &server, std::vector<std::string> &hold);
+        int     get_host(Server &server, std::vector<std::string> &hold);
+        int     get_server_name(Server &server, std::vector<std::string> &hold);
+        int     get_max_body(Server &server, std::vector<std::string> &hold);
+        int     get_root(Server &server, std::vector<std::string> &hold);
+        int     get_index(Server &server, std::vector<std::string> &hold);
 };
 
 class error_config : public std::exception
@@ -51,5 +56,4 @@ class error_config : public std::exception
         return("Error in config file !");
     }
 };
-
 std::string get_current_time();

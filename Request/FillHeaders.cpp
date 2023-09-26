@@ -11,6 +11,7 @@ void Request::fill_error_pages_map()
     pages.insert(std::pair<std::string, std::string>("501", "error/501.html"));
     pages.insert(std::pair<std::string, std::string>("503", "error/503.html"));
     pages.insert(std::pair<std::string, std::string>("414", "error/414.html"));
+    pages.insert(std::pair<std::string, std::string>("413", "error/413.html"));
 }
 
 void Request::fill_extensions_map()

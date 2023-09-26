@@ -1,4 +1,4 @@
 <?php
-header("Location:https://www.google.com"); 
+header("Location: https://www.google.com"); 
 echo"hello world";
 ?>

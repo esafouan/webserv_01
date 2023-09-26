@@ -15,8 +15,9 @@ std::string Request::get_separater(std::string val)
 void Request::get_post_status()
 {
     this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
+    // std::cout << "content= " << valueOfkey("Content-Type", StoreHeaders) << "-"<<std::endl;
     this->extension = this->extensions[valueOfkey("Content-Type", StoreHeaders)];
-
+    // std::cout << "ext= "<< this->extension << std::endl;
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")
     {
         if (target.find(".php") != target.npos || target.find(".py") != target.npos)
@@ -31,7 +32,14 @@ void Request::get_post_status()
     else if (find_key("Content-Type", StoreHeaders) && valueOfkey("Content-Type", StoreHeaders).find("boundary") != std::string::npos)
     {
         Post_status = "boundary";
-        boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
+        if (target.find(".php") != target.npos)
+        {
+              outfile_name = "directorie/upload/" + get_current_time() + ".txt";
+              Post_status = "Bainary/Row";
+        }
+          
+        else
+            boundary_separater = get_separater(valueOfkey("Content-Type", StoreHeaders));
     }
 
     else

@@ -4,7 +4,15 @@ class Server;
 class Request 
 {
    public :
-        
+        //cgi
+        int child_exited;
+        int header_for_cgi_resp;
+        clock_t time_of_child;
+        int is_forked_before;
+        int pipefd[2];
+        pid_t pid_of_the_child;
+        //
+
         int header_flag;
         int lenght_Readed;
         int lenght_of_content;
@@ -21,7 +29,7 @@ class Request
         std::string status;
         std::ifstream fd_file;
         
-        size_t chunk_size;
+        int chunk_size;
         size_t Bytes_readed;
         size_t chunked_file_size_response;
 
@@ -34,6 +42,7 @@ class Request
         std::vector<std::pair<std::string, std::string> > StoreHeaders;
         std::string Post_status;
         std::string query;
+        std::string content_type_python;
         std::string content_type;
         std::string content_lenght;
         std::string accept;

@@ -1,0 +1,11 @@
+<form action="../cgi-bin/multi.php" method="POST" enctype="multipart/form-data">
+    <!-- <label for="name">Name:</label>
+    <input type="text" name="name" required><br><br> -->
+    
+    <!-- <label for="email">Email:</label>
+    <input type="email" name="email" required><br><br> -->
+    
+    <label for="media">Media (Images and Videos):</label>
+    <input type="file" name="media[]" accept="image/*,video/*" required><br><br>
+    <input type="submit" value="Upload">
+</form>

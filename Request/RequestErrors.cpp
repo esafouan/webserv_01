@@ -48,7 +48,9 @@ void Request::error_handling(Server &serv)
     {
         std::string val = valueOfkey("Content-Length", StoreHeaders);
         int content = std::atoi(val.c_str());
-
+        std::cout <<"cont = " << content << std::endl;
+        std::cout << "max = " << serv.max_body << std::endl;
+        //exit(0);
         if (content > serv.max_body)
             status = "413";
     }
