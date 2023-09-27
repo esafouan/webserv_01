@@ -137,7 +137,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         size_t size = req[client_fd].Bytes_readed;
         char rec_b[size];
         memset(rec_b, 0, size - 1);
-        //
+        
         if (req[client_fd].Post_status == "Bainary/Row")
         {
 
@@ -164,12 +164,9 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 str.append(rec_b, n_read);
-                std::cout << "size0 = "<< str.size() << std::endl;
                 if (req[client_fd].calcul_chunk_flag == 0)
                 {
                     req[client_fd].chunk_size = get_chunk_size(str);
-                    
-                    std::cout << "chunk = " << req[client_fd].chunk_size << std::endl;
                     if (req[client_fd].chunk_size == 0)
                     {
                         
@@ -180,8 +177,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     remove_size_of_chunk(str);
                     req[client_fd].calcul_chunk_flag = 1;
                 }
-                std::cout << "if = "<< req[client_fd].chunk_size - (int)str.size() << std::endl;
-                
                 if (req[client_fd].chunk_size - (int)str.size() < 0)
                 {
                     req[client_fd].outfile.write(str.c_str(), req[client_fd].chunk_size);
@@ -224,7 +219,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     memset(rec_b, 0, size - 1);
             }
         }
-        
+
         else if (req[client_fd].Post_status == "boundary")
         {
             size_t pos;
@@ -369,10 +364,6 @@ std::string get_last(std::string path)
 }
 
 
-
-
-
-
 struct cgi_args
 {
     char *args[10];
@@ -403,9 +394,9 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[2] = (char*)"REDIRECT_STATUS=200";
         cgi->env[3] = strdup(script.c_str());
         cgi->env[4] = strdup(path.c_str());
-        
-        cgi->env[5] = (char *)req[client_fd].accept.c_str();
-        cgi->env[6] = NULL;
+        cgi->env[5] = (char *)req[client_fd].cookie.c_str();
+        cgi->env[6] = (char *)req[client_fd].accept.c_str();
+        cgi->env[7] = NULL;
     }
     else if (req[client_fd].method == "POST")
     {
@@ -415,11 +406,12 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[3] = (char*)"REDIRECT_STATUS=200";
         cgi->env[4] = strdup(script.c_str());
         cgi->env[5] = strdup(path.c_str());
-        
         cgi->env[6] = (char *)req[client_fd].accept.c_str();
-        cgi->env[7] = NULL;
+        cgi->env[7] = (char *)req[client_fd].cookie.c_str();
+        cgi->env[8] = NULL;
     }
 }
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <iostream>
@@ -433,6 +425,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
     Response resp(client_fd,req);
     if(resp.is_cgi() && req[client_fd].is_forked_before == 0)
     {
+        
         if(req[client_fd].is_forked_before == 0)
         {
             req[client_fd].is_forked_before = 1;
@@ -476,7 +469,6 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
             ep->ev.data.fd = req[client_fd].pipefd[0];
             if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, req[client_fd].pipefd[0], &ep->ev) == -1)
             {
-                std::cerr << "hamud" << std::endl;
                 exit(1);
                 close(req[client_fd].pipefd[0]);
             }
@@ -511,22 +503,32 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
     }
     else if(resp.is_cgi() && req[client_fd].is_forked_before == 1 && req[client_fd].child_exited == 1)
     {
+
         for(int i = 0 ;i < fd_ready ; i++ )
         {
             if(req[client_fd].pipefd[0] == ep->events[i].data.fd)
             {
+
                 char buffer[1000000];
                 ssize_t bytesRead;
                 if ((bytesRead = read(req[client_fd].pipefd[0], buffer, sizeof(buffer))) > 0)
                 {
-                   
-                    // std::string response_header = construct_error_page("image/jpeg",bytesRead ,req[client_fd].status);
-                    std::string response_header = resp.normal_pages_header1(bytesRead );
+                    std::string tmp(buffer);
+
+                    size_t pos;
+                    if ((pos = tmp.find("Set-Cookie")) != tmp.npos)
+                    {
+                        tmp = tmp.substr(pos);
+                        pos = tmp.find("\n");
+                        tmp = tmp.substr(0, pos);
+                    }
+                    std::string response_header = resp.normal_pages_header1(bytesRead , tmp);
                     write(client_fd, response_header.c_str(), response_header.size());
                     write(client_fd,buffer,bytesRead);
                     std::remove(req[client_fd].outfile_name.c_str());
                     epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], NULL);
                     close(req[client_fd].pipefd[0]);
+                    
                     return 0;
                 }
             }

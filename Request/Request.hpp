@@ -45,6 +45,7 @@ class Request
         std::string content_type_python;
         std::string content_type;
         std::string content_lenght;
+        std::string cookie;
         std::string accept;
         std::map<std::string, std::string> pages;
         std::map<std::string, std::string> extensions;
@@ -56,6 +57,7 @@ class Request
         Request(std::string req, Server server);
         Request(Request const &req);
         Request();
+        void init();
         Request& operator=(Request const & req);
         
         //utils
@@ -80,6 +82,7 @@ class Request
         std::string replace_slash_in_target(Server &serv, std::string &targ, int *flag);
         void directory_moved_permanently();
         //
+        void  Delete(const char *path);
         //post
         void get_post_status();
         std::string get_separater(std::string val);

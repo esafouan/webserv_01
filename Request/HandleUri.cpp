@@ -8,6 +8,10 @@ std::string Request::replace_slash_in_target(Server &serv, std::string &targ, in
     {
         if (serv.locations[i].NAME == "/")
         {
+            if ((method == "GET" && serv.locations[i].GET == false) 
+                || (method == "POST" && serv.locations[i].POST == false) 
+                    || (method == "DELETE" && serv.locations[i].DELETE == false))
+                        status = "405";
             no_root_location = 1;
             if (serv.locations[i]._return == "")
             {
@@ -29,7 +33,6 @@ std::string Request::replace_slash_in_target(Server &serv, std::string &targ, in
             *flag = 1;
         }
     }
-
     if (!no_root_location)
     {
         targ = serv.root;
@@ -55,7 +58,11 @@ void Request::short_uri(std::string &tar, Server &serv, int *flag_uri)
         {
             if (tar == serv.locations[i].NAME)
             {
-                if (serv.locations[i]._return == "")
+                if ((method == "GET" && serv.locations[i].GET == false) 
+                    || (method == "POST" && serv.locations[i].POST == false) 
+                    || (method == "DELETE" && serv.locations[i].DELETE == false))
+                        status = "405";
+                else if (serv.locations[i]._return == "")
                     tar = serv.locations[i].root;
                 else
                 {
@@ -82,8 +89,22 @@ void Request::long_uri(std::string &tar, Server &serv, int *flag_uri)
         {
             if (uri[j] == serv.locations[i].NAME)
             {
-                if (serv.locations[i]._return == "")
-                    tar += serv.locations[i].root;
+                if ((method == "GET" && serv.locations[i].GET == false) 
+                    || (method == "POST" && serv.locations[i].POST == false) 
+                    || (method == "DELETE" && serv.locations[i].DELETE == false))
+                        status = "405";
+                else if (serv.locations[i]._return == "")
+                {
+                    if(serv.locations[i].index == "")
+                    {
+                        if (serv.locations[i].autoindex == true)
+                            tar += serv.locations[i].root;
+                        else
+                            status = "403";
+                    }
+                    else
+                        tar += serv.locations[i].index;
+                }
                 else
                 {
                     tar += serv.locations[i]._return;

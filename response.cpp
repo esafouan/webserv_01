@@ -43,8 +43,9 @@ bool Response::is_post()
         return 1;
     return 0;
 }
-std::string Response::normal_pages_header1(size_t contentLength)
+std::string Response::normal_pages_header1(size_t contentLength,std::string t)
 {
+    std::string status;
     std::string header;
 
     header += "HTTP/1.1 ";
@@ -57,7 +58,10 @@ std::string Response::normal_pages_header1(size_t contentLength)
         header += "text/html\r\n";
     std::stringstream contentLengthStream;
     contentLengthStream << contentLength;
+    if(t.find("Set-Cookie") != t.npos)
+        header +=  t + "\r\n";
     header += "Content-Length: " + contentLengthStream.str() + "\r\n";
+
     header += "\r\n";
 
     return header;
@@ -72,6 +76,8 @@ std::string Response::normal_pages_header(size_t contentLength)
     header += "Content-Type: text/html\r\n";
     std::stringstream contentLengthStream;
     contentLengthStream << contentLength;
+    // if(!is_cookie_sit())
+    //     header+=  "Set-Cookie: " + cookie_header() + "\r\n";
     header += "Content-Length: " + contentLengthStream.str() + "\r\n";
     header += "\r\n";
 
@@ -105,6 +111,22 @@ std::string Response::redirect_pages_header()
 
 
     return header;
+}
+bool Response::is_cookie_sit()
+{
+    if(req[client_fd].cookie.empty())
+        return 0;
+    return 1;
+}
+std::string Response::cookie_header() {
+    std::ostringstream response;
+    
+    std::string cookieName = "smiya";
+    std::string cookieValue = "value";
+    // std::string cookieAttributes = "Path=/ hada optional";  
+    
+    std::string setCookieHeader = cookieName + "=" + cookieValue + "; ";
+    return setCookieHeader;
 }
 void Response::response_by_a_page(std::string path)
 {
@@ -244,13 +266,10 @@ std::string Response::chunked_header()
     header += "HTTP/1.1 ";
     header += req[client_fd].status;
     header += "\r\n";
-
-    // Content-Type header
     header += "Content-Type: " + get_content_type() + "\r\n";
-    // chunks
+    // if(!is_cookie_sit())
+    //     header+=  "Set-Cookie: " + cookie_header() + "\r\n";
     header += "Transfer-Encoding: chunked\r\n";
-
-    // Blank line
     header += "\r\n";
 
     return header;

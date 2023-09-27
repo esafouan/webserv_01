@@ -4,7 +4,6 @@
 import sys
 import os
 import cgi
-
 # Set appropriate HTTP headers for image response
 print("Content-type: video/mp4")  # Set the appropriate content type (e.g., image/jpeg)
 

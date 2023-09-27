@@ -32,7 +32,7 @@ Request &Request::operator=(Request const &req)
     this->query = req.query;
     this->content_type = req.content_type;
     this->content_lenght = req.content_lenght;
-
+    
     this->outfile.copyfmt(req.outfile);
     this->outfile.clear();
     this->outfile.open(req.outfile_name.c_str());
@@ -51,11 +51,11 @@ Request &Request::operator=(Request const &req)
     this->child_exited =req.child_exited;
     this->pipefd[0] = req.pipefd[0];
     this->pipefd[1] = req.pipefd[1];
-
+    this->cookie = req.cookie;
     return (*this);
 }
 
-Request::Request(std::string req, Server server)
+void Request::init()
 {
     this->status = "200";
     this->header_flag = 0;
@@ -74,51 +74,63 @@ Request::Request(std::string req, Server server)
     this->header_for_cgi_resp = 0;
     this->child_exited = 0;
     this->pipefd[0] = -1;
+}
+
+Request::Request(std::string req, Server server)
+{
+    init();
 
     ft_split(req, "\r\n", myHeaders);
     fill_method_type();
     fill_query();   
     //default error page
-    generate_error_page(server); 
     fill_error_pages_map();
     fill_extensions_map();
     this->uri_for_response = target;
     fill_headers();
-    
    //print Headers
-   // for (int i = 0; i < StoreHeaders.size(); i++)
-   //   std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
-    
+    // for (int i = 0; i < StoreHeaders.size(); i++)
+    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     error_handling(server); 
 
     if (method == "POST" && status == "200")
     {
-        this->endOfrequest = 0;
-        
+        this->endOfrequest = 0;  
         get_post_status();
     }
-    if(status == "200")
+
+    if (status == "200" && method != "DELETE")
         directory_moved_permanently();
 
     if (method == "DELETE" && status == "200")
-    {
-        Delete_methode();
-        if (status == "200")
-            target = "error/200.html";
+    {   
+
+        //std::cout << "to delete = "<< target << std::endl;
+
+        if (target.find("directorie/upload") != target.npos)
+        {
+            std::cout << "herre ->>>>>>>>>>> "<< std::endl;
+            Delete_methode();
+            if (status == "200")
+                target = "error/200.html";
+        }
+        else
+            status = "401";
+
     }
-   
+
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
         content_lenght = "CONTENT_LENGTH=" + valueOfkey("Content-Length", StoreHeaders);
     }
     this->accept = valueOfkey("Accept", StoreHeaders);
+    this->cookie = "HTTP_COOKIE=";
+    if (find_key("Cookie", StoreHeaders))
+        this->cookie += valueOfkey("Cookie", StoreHeaders);
 
-
-
-    std::cout << status << std::endl;
+    generate_error_page(server);
 } 
 
-Request::~Request()
-{
+Request::~Request(){
 }
