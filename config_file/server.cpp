@@ -122,12 +122,23 @@ int   Server::get_index(Server &server, std::vector<std::string> &hold)
     server.index = hold[1];
     return(1);
 }
+
 int Server::get_error_page(Server &server, std::vector<std::string> &hold)
 {
     if (hold.size() != 4)
         return 0;
     server.error_page.insert(std::pair<std::string, std::string>(hold[1], hold[3]));
     return (1);
+}
+
+int Server::Upload(Server &server, std::vector<std::string> &hold)
+{
+    if (hold.size() != 2)
+        return 0;
+    if(access(hold[1].c_str(), F_OK) == -1)
+        return 0;
+    server.upload_path = hold[1];
+    return 1;
 }
 
 void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointer_to_fun)
@@ -138,7 +149,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
     if (!location_flag)
     {
         int flag = 0;
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 8; i++)
         {
             if (pointer_to_fun[i].key == holder[0])
             {
@@ -245,13 +256,14 @@ Server::Server(char *config_file)
     if (!c_file.good())
         throw error_config();
 
-    my_func pointer_to_fun[7] = {
+    my_func pointer_to_fun[8] = {
         {"listen", &Server::get_listen},
         {"host", &Server::get_host},
         {"server_name", &Server::get_server_name},
         {"error_page", &Server::get_error_page},
         {"max_body", &Server::get_max_body},
         {"root", &Server::get_root},
+        {"upload", &Server::Upload},
         {"index", &Server::get_index}  
     };
 

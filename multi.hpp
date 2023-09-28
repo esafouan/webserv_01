@@ -44,7 +44,7 @@ class Response
         int chunked_response_headers();
         
         int chunked_response_body();
-        std::string normal_pages_header1(size_t contentLength,std::string t);
+        std::string cgi_header(std::string all_headers);
         std::string generateDirectoryListing();
         std::string get_last();
         std::string cookie_header();

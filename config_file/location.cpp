@@ -94,5 +94,6 @@ int location::Index(location &location, std::vector<std::string> &hold)
     return 1;
 } 
 
+
 location::~location()
 {}

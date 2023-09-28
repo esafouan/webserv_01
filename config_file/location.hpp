@@ -40,7 +40,7 @@ class location
         std::string NAME ;
         std::string  root ;    
         std::string index ;
-        std::string _return ;  
+        std::string _return ;
         bool POST;
         bool autoindex;
         bool GET;

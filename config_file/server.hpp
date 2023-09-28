@@ -20,6 +20,7 @@ class Server
         std::vector <Server> servers;
         int location_flag;
         std::string line; 
+        std::string upload_path;
         struct my_func
         {
             std::string key;
@@ -46,6 +47,7 @@ class Server
         int     get_max_body(Server &server, std::vector<std::string> &hold);
         int     get_root(Server &server, std::vector<std::string> &hold);
         int     get_index(Server &server, std::vector<std::string> &hold);
+        int     Upload(Server &server, std::vector<std::string> &hold);
 };
 
 class error_config : public std::exception

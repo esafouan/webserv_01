@@ -43,27 +43,31 @@ bool Response::is_post()
         return 1;
     return 0;
 }
-std::string Response::normal_pages_header1(size_t contentLength,std::string t)
+std::string Response::cgi_header(std::string all_headers)
 {
-    std::string status;
     std::string header;
 
     header += "HTTP/1.1 ";
-    header += req[client_fd].status;
-    header += "\r\n";
-    header += "Content-Type: ";
     if(req[client_fd].target.find("data.py") != std::string::npos)
+    {
+        header += req[client_fd].status;
+        header += "\r\n";
+        header += "Content-Type: ";
         header += req[client_fd].content_type_python + "\r\n";
+    }
     else
-        header += "text/html\r\n";
-    std::stringstream contentLengthStream;
-    contentLengthStream << contentLength;
-    if(t.find("Set-Cookie") != t.npos)
-        header +=  t + "\r\n";
-    header += "Content-Length: " + contentLengthStream.str() + "\r\n";
-
+    {
+        if(all_headers.find("Status") != all_headers.npos)
+        {
+            header +=  all_headers.substr(all_headers.find("Status") + 8,3);
+            all_headers = all_headers.substr(all_headers.find("\r\n") + 2);
+        }
+        else
+            header += req[client_fd].status;
+        header += "\r\n";
+        header += all_headers ;
+    }
     header += "\r\n";
-
     return header;
 }
 std::string Response::normal_pages_header(size_t contentLength)
@@ -105,7 +109,7 @@ std::string Response::redirect_pages_header()
     header += req[client_fd].status;
     header += "\r\n";
     header += "Location: ";
-    header += get_last();
+    header += "/" + get_last();
     header += "\r\n";
     header += "\r\n";
 
@@ -210,13 +214,13 @@ std::string Response::generateDirectoryListing()
         
             if (entryName != "." && entryName != "..")
             {
-                if(req[client_fd].flag_uri == 1)
-                {
+                // if(req[client_fd].flag_uri == 1)
+                // {
                     
-                    htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
-                } 
-                else 
-                {
+                //     htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
+                // } 
+                // else 
+                // {
                     struct stat fileStat;
                     if (stat((req[client_fd].target + entryName).c_str(), &fileStat) == 0)
                     {
@@ -224,7 +228,7 @@ std::string Response::generateDirectoryListing()
                             entryName += "/";
                     }
                     htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
-                }
+                // }
             }
         }
         closedir(dir);

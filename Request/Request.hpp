@@ -50,7 +50,7 @@ class Request
         std::map<std::string, std::string> pages;
         std::map<std::string, std::string> extensions;
 
-
+        std::string path_to_upload;
     public :
 
         static int num_file;
@@ -76,11 +76,12 @@ class Request
         //
 
         //uri handling
-        void long_uri(std::string &tar, Server &serv, int *flag_uri);
-        void short_uri(std::string &tar, Server &serv, int *flag_uri);
+        void long_uri(Server &serv);
+        void short_uri(Server &serv);
         int count_slash(std::string tar);
-        std::string replace_slash_in_target(Server &serv, std::string &targ, int *flag);
+        void replace_slash_in_target(Server &serv);
         void directory_moved_permanently();
+        void encoded_uri();
         //
         void  Delete(const char *path);
         //post

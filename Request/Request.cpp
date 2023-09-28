@@ -52,6 +52,7 @@ Request &Request::operator=(Request const &req)
     this->pipefd[0] = req.pipefd[0];
     this->pipefd[1] = req.pipefd[1];
     this->cookie = req.cookie;
+    this->path_to_upload = req.path_to_upload;
     return (*this);
 }
 
@@ -74,51 +75,56 @@ void Request::init()
     this->header_for_cgi_resp = 0;
     this->child_exited = 0;
     this->pipefd[0] = -1;
+    this->path_to_upload = "directorie/upload/";
+    
 }
 
 Request::Request(std::string req, Server server)
 {
     init();
+    if (!server.upload_path.empty())
+    {
+        std::cout << path_to_upload <<std::endl;
+        if (server.upload_path[server.upload_path.length() - 1] != '/')
+            server.upload_path += "/";
+        this->path_to_upload = server.upload_path;
+        std::cout << path_to_upload <<std::endl;
 
+    }
     ft_split(req, "\r\n", myHeaders);
     fill_method_type();
-    fill_query();   
-    //default error page
+    fill_query();
+    encoded_uri();
     fill_error_pages_map();
     fill_extensions_map();
     this->uri_for_response = target;
     fill_headers();
+
    //print Headers
     // for (int i = 0; i < StoreHeaders.size(); i++)
     //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    
     error_handling(server); 
-
+    
+    
     if (method == "POST" && status == "200")
     {
         this->endOfrequest = 0;  
         get_post_status();
     }
-
     if (status == "200" && method != "DELETE")
         directory_moved_permanently();
-
     if (method == "DELETE" && status == "200")
-    {   
-
-        //std::cout << "to delete = "<< target << std::endl;
-
+    {
         if (target.find("directorie/upload") != target.npos)
         {
-            std::cout << "herre ->>>>>>>>>>> "<< std::endl;
             Delete_methode();
             if (status == "200")
                 target = "error/200.html";
         }
         else
             status = "401";
-
     }
-
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
@@ -128,7 +134,6 @@ Request::Request(std::string req, Server server)
     this->cookie = "HTTP_COOKIE=";
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
-
     generate_error_page(server);
 } 
 
