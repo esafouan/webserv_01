@@ -9,7 +9,8 @@ void Request::replace_slash_in_target(Server &serv)
         if (serv.locations[i].NAME == "/")
         {
             no_root_location = 1;
-
+            state_of_cgi = serv.locations[i].cgi;
+            state_of_upload = serv.locations[i].upload_s;
             if ((method == "GET" && serv.locations[i].GET == false) 
                 || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
@@ -19,13 +20,18 @@ void Request::replace_slash_in_target(Server &serv)
             {
                 if (serv.locations[i].index == "")
                 {
-                    if (serv.locations[i].autoindex == true)
-                        target = serv.locations[i].root;
+                    if (serv.index == "")
+                    {
+                        if (serv.locations[i].autoindex == true)
+                            target = serv.locations[i].root;
+                        else
+                            status = "403";
+                    }
                     else
-                        status = "403";
+                        target = serv.index;
                 }
                 else
-                    target = serv.locations[i].root + "/" + serv.locations[i].index;
+                    target = serv.locations[i].index;
             }
             else
             {
@@ -53,21 +59,32 @@ void Request::short_uri(Server &serv)
     {
         if (serv.locations[i].NAME != "/")
         {
-            if (target == serv.locations[i].NAME)
-            {
+            if (target == serv.locations[i].NAME || target.substr(1) == serv.locations[i].NAME)
+            { 
                 flag_uri = 1;
+                state_of_cgi = serv.locations[i].cgi;
+                state_of_upload = serv.locations[i].upload_s;
                 if ((method == "GET" && serv.locations[i].GET == false) 
                     || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
                     status = "405";
-                else if (serv.locations[i]._return == "")
+ 
+                if (serv.locations[i]._return == "")
                 {
                     if (serv.locations[i].index == "")
                     {
-                        if (serv.locations[i].autoindex == true)
-                            target = serv.locations[i].root;
+                        if (serv.index == "")
+                        {
+                            if (serv.locations[i].autoindex == true)
+                            {
+                                target = serv.locations[i].root;
+                            }  
+                            else
+                                status = "403";
+                        }
                         else
-                            status = "403";
+                            target = serv.index;
+
                     }
                     else
                         target = serv.locations[i].index;
@@ -84,8 +101,11 @@ void Request::short_uri(Server &serv)
 
 void Request::long_uri(Server &serv)
 {
-    std::cout << "" <<std::endl;
     std::vector<std::string> uri;
+    int slash = 0;
+
+    if(target[0] == '/')
+        slash = 1;
     ft_split(target, "/", uri);
     target = "";
     int flag2;
@@ -95,47 +115,67 @@ void Request::long_uri(Server &serv)
         flag2 = 0;
         for (int i = 0; i < serv.locations.size(); i++)
         {
-            if (uri[j] == serv.locations[i].NAME)
+            if (serv.locations[i].NAME != "/")
             {
-                if ((method == "GET" && serv.locations[i].GET == false) 
-                    || (method == "POST" && serv.locations[i].POST == false) 
-                    || (method == "DELETE" && serv.locations[i].DELETE == false))
-                        status = "405";
-                else if (serv.locations[i]._return == "")
+                if (uri[j] == serv.locations[i].NAME)
                 {
-                    if (serv.locations[i].index == "")
+                    slash = 0;
+                    if ((method == "GET" && serv.locations[i].GET == false) 
+                        || (method == "POST" && serv.locations[i].POST == false) 
+                        || (method == "DELETE" && serv.locations[i].DELETE == false))
+                            status = "405";
+                    if (state_of_cgi != 0)
+                        state_of_cgi = serv.locations[i].cgi;
+                    if (state_of_upload != 0)
+                        state_of_upload = serv.locations[i].upload_s;
+                    if (serv.locations[i]._return == "")
                     {
-                        if (serv.locations[i].autoindex == true)
-                            target += serv.locations[i].root;
+                        if (serv.locations[i].index == "")
+                        {
+                            
+                            if (serv.index == "")
+                            {
+                                if (serv.locations[i].autoindex == true)
+                                    target += serv.locations[i].root;
+                                else
+                                    status = "403";
+                            }
+                            else
+                                target = serv.index;
+                        }
                         else
-                            status = "403";
+                        {
+                            target = serv.locations[i].index;
+                            return;
+                        }    
                     }
                     else
                     {
-                        target = serv.locations[i].index;
+                        target = serv.locations[i]._return;
+                        status = "301";
                         return;
-                    }    
+                    }
+                    flag_uri = 1;
+                    flag2 = 1;
+                    if(status != "200")
+                        return;
                 }
-                else
-                {
-                    target = serv.locations[i]._return;
-                    status = "301";
-                    return;
-                }
-                flag_uri = 1;
-                flag2 = 1;
-                if(status != "200")
-                    return;
             }
         }
         if (!flag2)
             target += uri[j];
         if (j < uri.size() - 1)
         {
-            if (target[target.size() - 1] != '/')
-                target += "/";
+            if(target != "")
+            {
+                if (target[target.length() - 1] != '/')
+                    target += "/";
+            }
+
         }
     }
+    if (slash)
+        target = "/" + target; 
 }
 
 void Request::directory_moved_permanently()

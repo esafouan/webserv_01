@@ -51,6 +51,10 @@ class Request
         std::map<std::string, std::string> extensions;
 
         std::string path_to_upload;
+
+        bool state_of_cgi;
+        bool state_of_upload;
+
     public :
 
         static int num_file;

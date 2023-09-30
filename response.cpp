@@ -109,7 +109,9 @@ std::string Response::redirect_pages_header()
     header += req[client_fd].status;
     header += "\r\n";
     header += "Location: ";
-    header += "/" + get_last();
+    if(req[client_fd].target[0] != '/')
+        header += "/";
+    header +=  req[client_fd].target;
     header += "\r\n";
     header += "\r\n";
 
@@ -132,9 +134,11 @@ std::string Response::cookie_header() {
     std::string setCookieHeader = cookieName + "=" + cookieValue + "; ";
     return setCookieHeader;
 }
+
 void Response::response_by_a_page(std::string path)
 {
     size_t file_size;
+    std::cout << "1 = " <<path << std::endl;
 
     std::ifstream fd_file(path.c_str());
     fd_file.seekg(0, std::ios::end);
@@ -144,6 +148,7 @@ void Response::response_by_a_page(std::string path)
     write(client_fd, response_header.c_str(), response_header.size());
     const size_t buffer_size = 1024;
     char buffer[buffer_size];
+    
     if (fd_file.read(buffer, (size_t)fileSize))
     {
         ssize_t bytes_sent = write(client_fd, buffer, (size_t)fileSize);
@@ -180,8 +185,6 @@ std::string Response::get_content_type()
             return "image/jpeg";
         if (strcmp(last_dot, ".jpg") == 0)
             return "image/jpeg";
-        if (strcmp(last_dot, ".py") == 0)
-            return "application/python";
         if (strcmp(last_dot, ".pyon") == 0)
             return "application/json";
         if (strcmp(last_dot, ".png") == 0)
@@ -191,9 +194,15 @@ std::string Response::get_content_type()
         if (strcmp(last_dot, ".svg") == 0)
             return "image/svg+xml";
         if (strcmp(last_dot, ".txt") == 0)
+             return "text/plain";
+         if (strcmp(last_dot, ".ico") == 0)
+            return "image/ico";
+        if (strcmp(last_dot, ".php") == 0 || strcmp(last_dot, ".py") == 0)
             return "text/plain";
-        if (strcmp(last_dot, ".php") == 0)
-            return "application/x-httpd-php";
+        if (strcmp(last_dot, ".cpp") == 0 )
+            return "text/plain";
+            
+    
     }
     return "";
 }
@@ -203,6 +212,8 @@ std::string Response::generateDirectoryListing()
     htmlStream << "<html><body>\n";
     htmlStream << "<h1>Directory Listing: " << req[client_fd].target << "</h1>\n";
     DIR *dir = opendir(req[client_fd].target.c_str());
+
+    
 
     if (dir)
     {
@@ -214,21 +225,27 @@ std::string Response::generateDirectoryListing()
         
             if (entryName != "." && entryName != "..")
             {
-                // if(req[client_fd].flag_uri == 1)
-                // {
-                    
-                //     htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName << "\">" << entryName << "</a></p>\n";
-                // } 
-                // else 
-                // {
+                std::cout << req[client_fd].flag_uri<<std::endl;
+                if(req[client_fd].flag_uri == 1)
+                {
                     struct stat fileStat;
                     if (stat((req[client_fd].target + entryName).c_str(), &fileStat) == 0)
                     {
-                        if (S_ISDIR(fileStat.st_mode))
+                        if (S_ISDIR(fileStat.st_mode) && entryName[entryName.size() - 1 ]!= '/')
+                            entryName += "/";
+                    }
+                    htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName   << "\">" << entryName  << "</a></p>\n";
+                } 
+                else 
+                {
+                    struct stat fileStat;
+                    if (stat((req[client_fd].target + entryName).c_str(), &fileStat) == 0)
+                    {
+                        if (S_ISDIR(fileStat.st_mode)&& entryName[entryName.size() - 1 ]!= '/')
                             entryName += "/";
                     }
                     htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
-                // }
+                }
             }
         }
         closedir(dir);
@@ -243,12 +260,10 @@ std::string Response::generateDirectoryListing()
 }
 int Response::directorie_list()
 {
+   
     std::string dir;
     off_t file_size;
     std::string response_header;
-    std::string target = req[client_fd].target;
-    if (target[0] == '/')
-        target = target.substr(1);
     dir = generateDirectoryListing();
     file_size = dir.size();
     response_header = normal_pages_header((size_t)(file_size));
@@ -270,6 +285,7 @@ std::string Response::chunked_header()
     header += "HTTP/1.1 ";
     header += req[client_fd].status;
     header += "\r\n";
+ 
     header += "Content-Type: " + get_content_type() + "\r\n";
     // if(!is_cookie_sit())
     //     header+=  "Set-Cookie: " + cookie_header() + "\r\n";
@@ -280,6 +296,7 @@ std::string Response::chunked_header()
 }
 int Response::chunked_response_headers()
 {
+    
     std::string target = req[client_fd].target;
     if (target[0] == '/')
         target = target.substr(1);

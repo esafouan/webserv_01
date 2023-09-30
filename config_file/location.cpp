@@ -72,6 +72,8 @@ int location::name(location &location, std::vector<std::string> &hold)
 
 int location::rreturn(location &location, std::vector<std::string> &hold)
 {
+    //check for '/'
+
     if (hold.size() != 2)
         return 0;
     location._return = hold[1];
@@ -80,6 +82,8 @@ int location::rreturn(location &location, std::vector<std::string> &hold)
 
 int location::root_name(location &location, std::vector<std::string> &hold)
 {
+    //check for '/'
+
     if (hold.size() != 2)
         return 0;
     location.root = hold[1];
@@ -88,12 +92,37 @@ int location::root_name(location &location, std::vector<std::string> &hold)
 
 int location::Index(location &location, std::vector<std::string> &hold)
 {
+    //check for '/'
+
     if (hold.size() != 2)
         return 0;
     location.index = hold[1];
     return 1;
 } 
-
+int location::cgi_state(location &location, std::vector<std::string> &hold)
+{
+    if (hold.size() != 2)
+        return 0;
+    if (hold[1] == "on")
+        location.cgi = true;
+    else if (hold[1] == "off")
+        location.cgi = false;
+    else
+        return 0;
+    return 1;
+}
+int location::upload_state(location &location, std::vector<std::string> &hold)
+{
+    if (hold.size() != 2)
+        return 0;
+    if (hold[1] == "on")
+        location.upload_s = true;
+    else if (hold[1] == "off")
+        location.upload_s = false;
+    else
+        return 0;
+    return 1;
+}
 
 location::~location()
 {}

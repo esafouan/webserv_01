@@ -12,7 +12,7 @@ SRC = 	multiplexer.cpp \
 OBJ = $(SRC:.cpp=.o)
 CXX = g++
 RM = rm -f
-CPPFLAGS =   -std=c++98  #-fsanitize=address -g3
+CPPFLAGS =   -std=c++98  -fsanitize=address -g3
 NAME = webserve
 
 all: $(NAME)

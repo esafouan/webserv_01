@@ -12,7 +12,7 @@ std::string get_current_time()
     std::time_t currentTime;
     std::time(&currentTime);
 
-    // Convert to a string and print
+
     char timeString[100]; // Adjust the buffer size as needed
     std::strftime(timeString, sizeof(timeString), "%Y-%m-%d-%H:%M:%S", std::localtime(&currentTime));
     std::string time(timeString);
@@ -20,49 +20,13 @@ std::string get_current_time()
     return (time);
 }
 
-std::string get_extension(std::string content_type)
-{
-    if (content_type.find("text/css") != std::string::npos)
-        return (".css");
-    else if (content_type.find("video/mp4") != std::string::npos)
-        return (".mp4");
-    else if (content_type.find("audio/mp4") != std::string::npos)
-        return (".mp4");
-    else if (content_type.find("text/csv") != std::string::npos)
-        return (".csv");
-    else if (content_type.find("image/gif") != std::string::npos)
-        return (".gif");
-    else if (content_type.find("text/html") != std::string::npos)
-        return (".html");
-    else if (content_type.find("image/x-icon") != std::string::npos)
-        return (".ico");
-    else if (content_type.find("image/jpeg") != std::string::npos)
-        return (".jpeg");
-    else if (content_type.find("image/jpeg") != std::string::npos)
-        return (".jpg");
-    else if (content_type.find("application/javascript") != std::string::npos)
-        return (".py");
-    else if (content_type.find("application/json") != std::string::npos)
-        return (".pyon");
-    else if (content_type.find("image/png") != std::string::npos)
-        return (".png");
-    else if (content_type.find("application/pdf") != std::string::npos)
-        return (".pdf");
-    else if (content_type.find("image/svg+xml") != std::string::npos)
-        return (".svg");
-    else if (content_type.find("text/plain") != std::string::npos)
-        return (".txt");
-    return ("");
-}
-
-
-
 size_t get_chunk_size(std::string str)
 {
     size_t pos;
     pos = str.find("\r\n");
     char *stat;
     size_t chunk_size = std::strtol(str.substr(0, pos).c_str(), &stat, 16);
+
     return chunk_size;
 }
 
@@ -70,26 +34,94 @@ void remove_size_of_chunk(std::string &str)
 {
     str = str.substr(str.find("\n") + 1);
 }
+
 std::string get_file_extension(std::string &str,int client_fd, std::map<int, Request> &req)
 {
     std::string ext;
     size_t pos;
-   
-    pos = str.find("Content-Type: ");
 
+    pos = str.find("Content-Disposition: ");
     str = str.substr(pos);
-    
-    pos = str.find("\n");
-    ext = str.substr(14,pos - 15);
-    
-    pos = str.find("\r\n\r\n"); 
+    pos = str.find("\r\n"); 
+    str = str.substr(pos + 2);
 
-    str = str.substr(pos + 4);
-    req[client_fd].content_type_python = ext;
-    return (get_extension(ext));
+    std::string tmp;
+    pos = str.find("\n");
+    tmp  = str.substr(0, pos);
+    if(tmp.find("Content-Type: ") != tmp.npos)
+    {
+        pos = str.find("Content-Type: ");
+        if(pos != str.npos)
+        {
+            str = str.substr(pos);
+            pos = str.find("\n");
+            ext = str.substr(14,pos - 15);
+            pos = str.find("\r\n\r\n"); 
+            str = str.substr(pos + 4);
+            return (req[client_fd].extensions[ext]);
+        }
+    } 
+    str = str.substr(2);
+    return(".txt");
 }
 
+void write_content(int client_fd, std::map<int, Request> &req, int close, std::string &content, int size)
+{
+    req[client_fd].outfile.write(content.c_str(), size);
+    req[client_fd].outfile.flush();
+    if (close)
+        req[client_fd].outfile.close();
+}
 
+std::string generate_file_name(std::string &str, int client_fd, std::map<int, Request> &req)
+{
+    std::string time_tmp;
+    std::stringstream s;
+    s << Request::num_file++;
+    time_tmp +=  s.str() ; 
+    std::string pt;
+
+    pt = time_tmp + get_file_extension(str, client_fd, req);              
+    if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".py") != req[client_fd].target.npos)
+        pt += ".txt";
+    return pt;
+}
+
+void open_file(std::string &str, int client_fd, std::map<int, Request> &req)
+{
+    req[client_fd].outfile_name = req[client_fd].path_to_upload + generate_file_name(str, client_fd, req);
+    req[client_fd].outfile.open(req[client_fd].outfile_name.c_str() , std::ios::binary);
+    req[client_fd].open_boundry_file = 1;
+}
+
+void multiple_file_in_chunk(std::string &str, int client_fd, std::map<int, Request> &req, int pos)
+{
+    while(1)
+    {
+        if(req[client_fd].open_boundry_file == 0)
+        {
+            std::cout <<"here 1" <<std::endl;
+            std::cout << "======="<< str << "========="<<std::endl;
+            open_file(str,  client_fd, req);
+        }
+
+        else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos)
+        {
+            std::string s = str.substr(pos);
+            if(strncmp(s.c_str(),(req[client_fd].boundary_separater + "--").c_str(), req[client_fd].boundary_separater.length() + 2 ) == 0)
+            {
+                write_content(client_fd, req, 1, str, pos);
+                req[client_fd].epol = 0;
+                return ;
+            }
+            else 
+            {
+                write_content(client_fd, req, 1, str, pos);
+                req[client_fd].open_boundry_file = 0;
+            }
+        }
+    }
+}
 
 void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::map<int, Request> &req)
 {
@@ -132,6 +164,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 req[client_fd].epol = 0;
         }
     }
+    
     else
     {
         size_t size = req[client_fd].Bytes_readed;
@@ -205,7 +238,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         else if (req[client_fd].Post_status == "boundary")
         {
             size_t pos;
-            
+            size_t pos1;
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 std::string str;
@@ -214,102 +247,37 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 str.append(rec_b, n_read);
                 if (req[client_fd].open_boundry_file == 0)
                 {
-                    std::string time_tmp;
-                    std::stringstream s;
-                    s << Request::num_file++;
-                    time_tmp +=  s.str() ; 
-                    std::string pt;
-
-                    pt = time_tmp + get_file_extension(str, client_fd, req);              
-                    if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".py") != req[client_fd].target.npos)
-                        pt += ".txt";
-                    req[client_fd].outfile_name =  req[client_fd].path_to_upload + pt;
-                    std::cout << "name -------->"<< req[client_fd].outfile_name << std::endl;
-                    req[client_fd].outfile.open(req[client_fd].outfile_name.c_str() , std::ios::binary);
-                    req[client_fd].open_boundry_file = 1;
+                    std::cout <<"here " <<std::endl;
+                    std::cout << "======="<< str << "========="<<std::endl;
+                   open_file(str,  client_fd, req);
                 }
+
                 if ((str.find(req[client_fd].boundary_separater)) == str.npos && (str.find(req[client_fd].boundary_separater + "--")) == str.npos) //if no separater in the chunk
                 {
                     int rest = str.length() - req[client_fd].boundary_separater.length();
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-                    req[client_fd].rest_of_boundry = str.substr(rest);  
+                    write_content(client_fd, req, 0, str, rest);
+                    req[client_fd].rest_of_boundry = str.substr(rest);
                 }
-                else if((pos = str.find(req[client_fd].boundary_separater)) != str.npos  && (str.find(req[client_fd].boundary_separater + "--")) != str.npos) //both
+                else if((pos = str.find(req[client_fd].boundary_separater)) != str.npos  && (pos1 = str.find(req[client_fd].boundary_separater + "--")) != str.npos && pos != pos1) //both
                 {
-                    req[client_fd].outfile.write(str.c_str(), pos);
-                    req[client_fd].outfile.flush();
-                    req[client_fd].outfile.close();
+                    
+                    write_content(client_fd, req, 1, str, pos);
                     req[client_fd].open_boundry_file = 0;
-                    while(1)
-                    {
-                        //handle rest parts need cleaning code
-                        if(req[client_fd].open_boundry_file == 0)
-                        {
-                            std::string time_tmp;
-                            std::stringstream s;
-                            s << Request::num_file++;
-                            time_tmp +=  s.str() ;
-                            std::string pt;
-                            try
-                            {
-                                pt = time_tmp + get_file_extension(str, client_fd, req);        
-                                if (req[client_fd].target.find(".php") != req[client_fd].target.npos || req[client_fd].target.find(".py") != req[client_fd].target.npos)
-                                    pt += ".txt";
-                                req[client_fd].outfile_name = req[client_fd].path_to_upload + pt;
-                            }
-                            catch(std::exception &e)
-                            {
-                                req[client_fd].epol = 0;
-                                return ;  
-                            }
-                            req[client_fd].outfile.open((req[client_fd].path_to_upload + pt).c_str() , std::ios::binary);
-                            req[client_fd].open_boundry_file = 1;
-                            
-                        }
-                        else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos)
-                        {
-                            std::string s = str.substr(pos);
-                            if(strncmp(s.c_str(),(req[client_fd].boundary_separater + "--").c_str(),req[client_fd].boundary_separater.length() + 2 ) == 0)
-                            {
-                                
-                                req[client_fd].outfile.write(str.c_str(), pos);
-                                req[client_fd].outfile.flush();
-                                req[client_fd].outfile.close();
-                                req[client_fd].epol = 0;
-                                return ;
-                            }
-                            else 
-                            {
-                                req[client_fd].outfile.write(str.c_str(), pos);
-                                req[client_fd].outfile.flush();
-                                req[client_fd].outfile.close();
-                                req[client_fd].open_boundry_file = 0;
-                            }
-                        }
-                    }
+                    multiple_file_in_chunk(str, client_fd, req, pos);
                 }
-                
-                else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos  ) // midle separater
-                {
-                    int rest = str.length() - (str.length() - pos);
-
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-                    req[client_fd].rest_of_boundry = str.substr(pos + 1);
-                    req[client_fd].open_boundry_file = 0;
-                    req[client_fd].outfile.close();
-                }
-               
                 else if((pos = str.find(req[client_fd].boundary_separater + "--")) != str.npos) //last separater
                 {
                     int rest = str.length() - (str.length() - pos);
-
-                    req[client_fd].outfile.write(str.c_str(), rest);
-                    req[client_fd].outfile.flush();
-                    req[client_fd].outfile.close();
+                    write_content(client_fd, req, 1, str, rest);
                     req[client_fd].epol = 0;
                     return ;
+                }
+                else if ((pos = str.find(req[client_fd].boundary_separater)) != str.npos  ) // midle separater
+                {
+                    int rest = str.length() - (str.length() - pos);
+                    write_content(client_fd, req, 1, str, rest);
+                    req[client_fd].rest_of_boundry = str.substr(pos + 1);
+                    req[client_fd].open_boundry_file = 0; 
                 }
                 memset(rec_b, 0, size - 1);
             }    
@@ -338,14 +306,8 @@ std::string get_last(std::string path)
         else
             break;
     }
-    // std::cout <<"here " <<path << std::endl;
     return path;
 }
-
-
-
-
-
 
 struct cgi_args
 {
@@ -361,7 +323,6 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
     script = "SCRIPT_FILENAME=" + req[client_fd].target ;
     path = "PATH_INFO=" + req[client_fd].target ;//req[client_fd].target
 
-    //std::cerr << "URI -> " << req[client_fd].target << std::endl;
   
     if ((req[client_fd].target.find(".php")) != std::string::npos)
         cgi->args[0] = (char*)"/usr/bin/php-cgi";
@@ -396,6 +357,7 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
         cgi->env[9] = NULL;
     }
 }
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <iostream>
@@ -405,11 +367,11 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
 
 int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
 {
+
     signal(SIGPIPE, SIG_IGN);
     Response resp(client_fd,req);
-    if(resp.is_cgi() && req[client_fd].is_forked_before == 0)
-    {
-        
+    if(resp.is_cgi() && req[client_fd].is_forked_before == 0 && req[client_fd].state_of_cgi == 1)
+    { 
         if(req[client_fd].is_forked_before == 0)
         {
             req[client_fd].is_forked_before = 1;
@@ -530,19 +492,27 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
         return 1;
         
     }
-    
-    else if (resp.is_delete() || resp.is_error() || resp.is_post())
+    else if(resp.is_post() && req[client_fd].state_of_upload == 1)
     {
         std::string path;
-        if(resp.is_delete() || resp.is_error())
-            path = req[client_fd].target;
-        else
-        {
-            path = "succes.html";
-             req[client_fd].status = "201";
-        }
+        path = "succes.html";
         resp.response_by_a_page(path);
         return 0;
+    }
+    else if(resp.is_post() && req[client_fd].state_of_upload == 0)
+    {
+        std::string path;
+        path = "error/403.html";
+        req[client_fd].status = "503";
+        resp.response_by_a_page(path);
+        return 0;   
+    }
+    else if (resp.is_delete() || resp.is_error()  )
+    {
+        
+        resp.response_by_a_page(req[client_fd].target);
+        return 0;
+        
     }
     else if(resp.is_redirection())
     {
@@ -552,6 +522,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
     }
     else if (resp.is_get())
     {
+       
        if (resp.get_content_type() == "")
         {
             if (!resp.directorie_list())
@@ -684,6 +655,3 @@ void run(std::vector<Server> servers, epol *ep)
         }
     }
 }
-
-
-

@@ -53,6 +53,9 @@ Request &Request::operator=(Request const &req)
     this->pipefd[1] = req.pipefd[1];
     this->cookie = req.cookie;
     this->path_to_upload = req.path_to_upload;
+    this->extensions = req.extensions;
+    this->state_of_cgi = req.state_of_cgi;
+    this->state_of_upload = req.state_of_upload;
     return (*this);
 }
 
@@ -76,6 +79,9 @@ void Request::init()
     this->child_exited = 0;
     this->pipefd[0] = -1;
     this->path_to_upload = "directorie/upload/";
+    this->state_of_cgi = 1;
+    this->state_of_upload = 1;
+
     
 }
 
@@ -84,15 +90,12 @@ Request::Request(std::string req, Server server)
     init();
     if (!server.upload_path.empty())
     {
-        std::cout << path_to_upload <<std::endl;
         if (server.upload_path[server.upload_path.length() - 1] != '/')
             server.upload_path += "/";
         this->path_to_upload = server.upload_path;
-        std::cout << path_to_upload <<std::endl;
-
     }
     ft_split(req, "\r\n", myHeaders);
-    fill_method_type();
+    fill_method_type();    
     fill_query();
     encoded_uri();
     fill_error_pages_map();
@@ -105,8 +108,7 @@ Request::Request(std::string req, Server server)
     //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     
     error_handling(server); 
-    
-    
+
     if (method == "POST" && status == "200")
     {
         this->endOfrequest = 0;  
@@ -125,6 +127,7 @@ Request::Request(std::string req, Server server)
         else
             status = "401";
     }
+    
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
@@ -135,7 +138,8 @@ Request::Request(std::string req, Server server)
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
     generate_error_page(server);
+
 } 
 
 Request::~Request(){
-}
+} 

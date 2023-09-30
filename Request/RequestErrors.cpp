@@ -28,28 +28,26 @@ void Request::error_handling(Server &serv)
     {
         if (target == "/")
             replace_slash_in_target(serv);
-        if (target[0] == '/')
-            target = target.substr(1);
-        if (count_slash(target) == 0 && target != "/")
+
+        else if (count_slash(target) == 1 && target != "/")
             short_uri(serv);
-        else if (count_slash(target) >= 1)
+
+        else if (count_slash(target) > 1)
             long_uri(serv);
     }
-
     if (status == "200")
-    {
-        if (find_key("Content-Length", StoreHeaders))
+    {   if (access(target.c_str(), F_OK ) == -1)
+            status = "404";
+        if(method == "POST" && this->state_of_upload == 0)
+            status = "403";
+        else if (find_key("Content-Length", StoreHeaders))
         {
             std::string val = valueOfkey("Content-Length", StoreHeaders);
             int content = std::atoi(val.c_str());
-
             if (content > serv.max_body)
                 status = "413";
         }
-        else if (access(target.c_str(), F_OK ) == -1)
-            status = "404";
-        
-        
+     
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
             status = "403";
         else if (target.find(".php") != target.npos || target.find(".py") != target.npos)
