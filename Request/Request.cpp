@@ -57,7 +57,8 @@ Request &Request::operator=(Request const &req)
     this->state_of_cgi = req.state_of_cgi;
     this->state_of_upload = req.state_of_upload;
     this->Body = req.Body;
-    is_cgi = req.is_cgi;
+    this->is_cgi = req.is_cgi;
+
 
     return (*this);
 }
@@ -85,16 +86,29 @@ void Request::init()
     this->state_of_cgi = 1;
     this->state_of_upload = 1;
     this->Body = "";
-    is_cgi = 0;
+    this->is_cgi = 0;
 
 }
 
-Request::Request(std::string req, Server server)
+void Request::search_for_ServerName(std::vector<Server> &servers, Server &serv)
+{
+    std::vector<std::string> tmp;
+
+    ft_split(valueOfkey("Host", StoreHeaders), ":", tmp);
+    for (int i = 0; i < servers.size(); i++)
+    {
+        if (servers[i].server_name == tmp[0])
+        {
+            serv = servers[i];
+            break;
+        } 
+    }
+  
+}
+
+Request::Request(std::string req, Server server, std::vector<Server> &servers)
 {
     init();
-
-    
-
     if (!server.upload_path.empty())
     {
         if (server.upload_path[server.upload_path.length() - 1] != '/')
@@ -107,7 +121,6 @@ Request::Request(std::string req, Server server)
         Body = req.substr(pos + 4);
  
     req = req.substr(0, pos + 2);
-
     ft_split(req, "\r\n", myHeaders);
     fill_method_type();    
     fill_query();
@@ -120,10 +133,14 @@ Request::Request(std::string req, Server server)
     if (target.find(".php") != target.npos || target.find(".py") != target.npos)
         is_cgi = 1;
    //print Headers
-    // for (int i = 0; i < StoreHeaders.size(); i++)
-      //   std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    //for (int i = 0; i < StoreHeaders.size(); i++)
+      //  std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    if (find_key("Host", StoreHeaders))
+        search_for_ServerName(servers, server);
+    std::cout <<  "cl= "<<valueOfkey("Content-Length", StoreHeaders)<<std::endl;;
+    
     error_handling(server);
-
+  
     if (method == "POST" && status == "200")
     {
         this->endOfrequest = 0;  
@@ -133,7 +150,7 @@ Request::Request(std::string req, Server server)
         directory_moved_permanently();
     if (method == "DELETE" && status == "200")
     {
-        if (target.find("directorie/upload") != target.npos)
+        if (target.find("../") == target.npos || target.find("./") == target.npos)
         {
             Delete_methode();
             if (status == "200")
@@ -152,7 +169,7 @@ Request::Request(std::string req, Server server)
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
     generate_error_page(server);
-    std::cout << "fin = " << target << std::endl;
+    
 } 
 
 Request::~Request(){

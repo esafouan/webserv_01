@@ -99,6 +99,7 @@ int location::Index(location &location, std::vector<std::string> &hold)
     location.index = hold[1];
     return 1;
 } 
+
 int location::cgi_state(location &location, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
@@ -111,6 +112,7 @@ int location::cgi_state(location &location, std::vector<std::string> &hold)
         return 0;
     return 1;
 }
+
 int location::upload_state(location &location, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
@@ -121,6 +123,13 @@ int location::upload_state(location &location, std::vector<std::string> &hold)
         location.upload_s = false;
     else
         return 0;
+    return 1;
+}
+int location::uploadpath(location &location, std::vector<std::string> &hold)
+{
+    if (hold.size() != 2)
+        return 0;
+    location.upload_path = hold[1];
     return 1;
 }
 

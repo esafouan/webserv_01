@@ -16,12 +16,12 @@ void Request::replace_slash_in_target(Server &serv)
                 || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
                         status = "405";
-            if (method == "POST" && this->state_of_upload == 0)
+            else if (method == "POST" && this->state_of_upload == 0)
             {
                 if (!is_cgi)
                     status = "403"; 
             }
-            if (serv.locations[i]._return == "")
+            if (status == "200" && serv.locations[i]._return == "")
             {
                 if (serv.locations[i].index == "")
                 {
@@ -73,12 +73,12 @@ void Request::short_uri(Server &serv)
                     || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
                     status = "405";
-                if (method == "POST" && this->state_of_upload == 0)
+                else if (method == "POST" && this->state_of_upload == 0)
                 {
                     if (!is_cgi)
                         status = "403"; 
                 }
-                if (serv.locations[i]._return == "")
+                if (status == "200" && serv.locations[i]._return == "")
                 {
                     if (serv.locations[i].index == "")
                     {
@@ -133,25 +133,25 @@ void Request::long_uri(Server &serv)
             {
                 if (uri[j] == serv.locations[i].NAME)
                 {
-                    slash = 0;
-                    if ((method == "GET" && serv.locations[i].GET == false) 
-                        || (method == "POST" && serv.locations[i].POST == false) 
-                        || (method == "DELETE" && serv.locations[i].DELETE == false))
-                            status = "405";
+                    slash = 0;                    
                     if (state_of_cgi != 0)
                         state_of_cgi = serv.locations[i].cgi;
                     if (state_of_upload != 0)
                         state_of_upload = serv.locations[i].upload_s;
-                    if (method == "POST" && this->state_of_upload == 0)
+                    if ((method == "GET" && serv.locations[i].GET == false) 
+                        || (method == "POST" && serv.locations[i].POST == false) 
+                        || (method == "DELETE" && serv.locations[i].DELETE == false))
+                            status = "405";
+
+                    else if (method == "POST" && this->state_of_upload == 0)
                     {
                         if (!is_cgi)
                         {
-                            std::cout << "00"<<std::endl;
-                             status = "403"; 
+                            status = "403";
                         }
                            
                     }
-                    if (serv.locations[i]._return == "")
+                    if ( status == "200" && serv.locations[i]._return == "")
                     {
                         if (serv.locations[i].index == "")
                         {
@@ -162,7 +162,6 @@ void Request::long_uri(Server &serv)
                                     target += serv.locations[i].root;
                                 else
                                 {
-                                    std::cout << "111"<<std::endl;
                                     status = "403";
                                 }
                             }

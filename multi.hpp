@@ -2,6 +2,12 @@
 
 #include "Request/Request.hpp"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <iostream>
+#include <fstream>
+#include <fcntl.h>
+#include <unistd.h>
 #define MAX_REQUEST_SIZE 2048
 #define LINE 4096
 
@@ -56,7 +62,7 @@ typedef struct ep
 {
     int  ep_fd;
     struct epoll_event ev;
-    struct epoll_event events[10];
+    struct epoll_event events[1024];
 } epol ;
 
 

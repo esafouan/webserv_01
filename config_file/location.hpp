@@ -41,12 +41,14 @@ class location
         std::string  root ;    
         std::string index ;
         std::string _return ;
+        std::string upload_path;
         bool POST;
         bool autoindex;
         bool GET;
         bool DELETE;
         bool cgi;
         bool upload_s;
+        std::vector <std::string> duplicate_in_location;
 
     public :
         location();
@@ -60,6 +62,8 @@ class location
         int Index(location &location, std::vector<std::string> &hold);
         int cgi_state(location &location, std::vector<std::string> &hold);
         int upload_state(location &location, std::vector<std::string> &hold);
+        int uploadpath(location &location, std::vector<std::string> &hold);
+        
         void    print()
         {
             std::cout << NAME << std::endl;

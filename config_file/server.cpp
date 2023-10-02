@@ -1,5 +1,6 @@
 #include "server.hpp"
 
+
 Server::Server()
 {
     this->host = "";
@@ -53,10 +54,11 @@ int   Server::get_listen(Server &server, std::vector<std::string> &hold)
     
     SA_I s;
 
-    server.server_sock.push_back(-1);
+    server.server_sock = -1;
     memset(&s,0,sizeof(s));
-    server.seraddr_s.push_back(s);
-    server.listen.push_back((u_int16_t)listen);
+    server.seraddr_s = s;
+    server.listen = (u_int16_t)listen;
+    server.duplicate_in_server.push_back("listen");
     return(1);
 }
 
@@ -81,6 +83,7 @@ int   Server::get_host(Server &server, std::vector<std::string> &hold)
         i++;
     }
     server.host = hold[1];
+    server.duplicate_in_server.push_back("host");
     return(1);
 }
 
@@ -88,7 +91,8 @@ int   Server::get_server_name(Server &server, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
-    server.server_name.push_back(hold[1]);
+    server.duplicate_in_server.push_back("server_name");
+    server.server_name = hold[1];
     return(1);
 }
 
@@ -104,6 +108,8 @@ int   Server::get_max_body(Server &server, std::vector<std::string> &hold)
     if (max > 2000000000)
         return 0;
     server.max_body = max;
+    server.duplicate_in_server.push_back("max");
+
     return(1);
 }
 
@@ -114,6 +120,7 @@ int   Server::get_root(Server &server, std::vector<std::string> &hold)
     if (hold.size() != 2)
         return 0;
     server.root = hold[1];
+    server.duplicate_in_server.push_back("root");
     return(1);
 }
 
@@ -123,6 +130,7 @@ int   Server::get_index(Server &server, std::vector<std::string> &hold)
     if (hold.size() != 2)
         return 0;
     server.index = hold[1];
+    server.duplicate_in_server.push_back("index");
     return(1);
 }
 
@@ -142,6 +150,22 @@ int Server::Upload(Server &server, std::vector<std::string> &hold)
     if(access(hold[1].c_str(), F_OK) == -1)
         return 0;
     server.upload_path = hold[1];
+    server.duplicate_in_server.push_back("upload_path");
+
+    return 1;
+}
+
+int Server::check_duplicate(Server &server)
+{
+    std::map<std::string, std::string> tmp;
+
+    for (int i = 0; i < server.duplicate_in_server.size(); i++)
+    {
+        if (tmp.count(server.duplicate_in_server[i]) == 1)
+            return 0;
+        tmp[server.duplicate_in_server[i]] = "";
+    }
+    // exit(0);
     return 1;
 }
 
@@ -157,7 +181,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
         {
             if (pointer_to_fun[i].key == holder[0])
             {
-                flag = 1;    
+                flag = 1;
                 if (!(this->*(pointer_to_fun[i].my_function))(serv, holder))
                 {
                     std::cout << "0"<< std::endl;
@@ -165,8 +189,13 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 }
             }
         }
+        if(!check_duplicate(serv))
+            throw error_config();
         if (!flag)
+        {
             location_flag = 1;
+        }
+           
     }
 }
 
@@ -192,7 +221,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 if(holder.size() == 0)
                     throw error_config();
                 int flag = 0;
-                for (int i = 0; i < 9; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     if (ptr[i].key_location == holder[0])
                     {
@@ -227,14 +256,14 @@ void Server::print_all()
     {
         std::cout << "----------------" << "Server" << i <<"----------------" <<std::endl;
         std::cout << "listen :"<< std::endl;
-        std::vector<u_int16_t>::iterator iter = servers[i].listen.begin();
-        for(iter; iter < servers[i].listen.end(); iter++)
-            std::cout << *iter << " ";
+        // std::vector<u_int16_t>::iterator iter = servers[i].listen.begin();
+        // for(iter; iter < servers[i].listen.end(); iter++)
+        //     std::cout << *iter << " ";
         std::cout << std::endl;
         std::cout << "host : \n" << servers[i].host << std::endl;
-        std::vector<std::string>::iterator it1 = servers[i].server_name.begin();
-        for(it1; it1 < servers[i].server_name.end(); it1++)
-            std::cout << "server_name :\n" << *it1 << std::endl;
+       // std::vector<std::string>::iterator it1 = servers[i].server_name.begin();
+       // for(it1; it1 < servers[i].server_name.end(); it1++)
+         //   std::cout << "server_name :\n" << *it1 << std::endl;
         std::map<std::string , std::string>::iterator it = servers[i].error_page.begin();
         std::cout << "error_page :\n";
         while (it !=  servers[i].error_page.end())
@@ -267,11 +296,11 @@ Server::Server(char *config_file)
         {"error_page", &Server::get_error_page},
         {"max_body", &Server::get_max_body},
         {"root", &Server::get_root},
-        {"upload", &Server::Upload},
+        {"upload_path", &Server::Upload},
         {"index", &Server::get_index}  
     };
 
-    my_location ptr[9] = {
+    my_location ptr[10] = {
         {"root", &location::root_name},
         {"autoindex", &location::auto_index},
         {"POST", &location::post},
@@ -281,6 +310,7 @@ Server::Server(char *config_file)
         {"return", &location::rreturn},
         {"cgi", &location::cgi_state},
         {"upload", &location::upload_state},
+        {"upload_path", &location::uploadpath},
     };
 
     

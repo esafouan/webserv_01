@@ -139,7 +139,6 @@ void Boundry(int client_fd, std::map<int, Request> &req, std::string &str)
            rest = str.length() - req[client_fd].boundary_separater.length();
         else
             rest = str.length();
-        // std::cout << "rest 0 ="<< rest << std::endl;
         write_content(client_fd, req, 0, str, rest);
         req[client_fd].rest_of_boundry = str.substr(rest);
     }
@@ -160,8 +159,6 @@ void Boundry(int client_fd, std::map<int, Request> &req, std::string &str)
     {
         int rest = str.length() - (str.length() - pos);
         write_content(client_fd, req, 1, str, rest);
-        std::cout << "rest 1 ="<< pos + 1 << std::endl;
-
         req[client_fd].rest_of_boundry = str.substr(pos + 1);
         req[client_fd].open_boundry_file = 0; 
     }
@@ -169,11 +166,9 @@ void Boundry(int client_fd, std::map<int, Request> &req, std::string &str)
 
 void Chunked(int client_fd, std::map<int, Request> &req, std::string &str, int n_read)
 {
-    std::cout << n_read << std::endl;
     if (req[client_fd].calcul_chunk_flag == 0)
     {
         req[client_fd].chunk_size = get_chunk_size(str);
-        std::cerr << "hh = " << req[client_fd].chunk_size <<std::endl;
         if (req[client_fd].chunk_size == 0)
         {
             req[client_fd].outfile.close();
@@ -191,7 +186,6 @@ void Chunked(int client_fd, std::map<int, Request> &req, std::string &str, int n
         return ;
     }
     req[client_fd].chunk_size -= str.size();
-    std::cerr << "ok = " << req[client_fd].chunk_size <<std::endl;
     if (n_read ==  req[client_fd].Bytes_readed - 1 && req[client_fd].Bytes_readed < 1024 )
         req[client_fd].outfile.write(str.c_str(), str.size() - 2);
     else
@@ -257,31 +251,49 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             int flag = 0;
             for (int j = 0; j < servers.size(); j++)
             {
-                for (int i = 0; i < servers[j].fd_sock.size(); i++)
-                {
-                    if (servers[j].fd_sock[i] == client_fd)
-                    {
-                        Request obj(stringOfrequest[client_fd], servers[j]);
+               for (int i = 0; i < servers[j].fd_sock.size(); i++)
+               {
+                   if (servers[j].fd_sock[i] == client_fd)
+                   {
+                        Request obj(stringOfrequest[client_fd], servers[j], servers);
                         req.insert(std::pair<int, Request>(client_fd, obj));
-                        flag = 1;
-                        break;
-                    }
-                    if (flag == 1)
-                        break;
-                }
+                       flag = 1;
+                       break;
+                   }
+                   if (flag == 1)
+                       break;
+               }
             }
-            
-            if(req[client_fd].Post_status == "boundary")
+            stringOfrequest.erase(client_fd);
+
+            if (req[client_fd].Post_status == "boundary")
             {
                 if (req[client_fd].Body.find(req[client_fd].boundary_separater + "--") != std::string::npos)
                 {
                     std::string str;
                     str = req[client_fd].Body;
-                    std::cout << "-------------" << str << "-----------" <<std::endl;
                     req[client_fd].Body.clear();
                     Boundry(client_fd, req, str);
                 }
             }
+            
+            else if (req[client_fd].Post_status == "Bainary/Row")
+            {
+                req[client_fd].lenght_Readed += req[client_fd].Body.size();
+                if (!req[client_fd].Body.empty())
+                {
+                    req[client_fd].outfile.write(req[client_fd].Body.c_str(), req[client_fd].Body.size());
+                    req[client_fd].Body.clear();
+                }
+                if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
+                {
+                    req[client_fd].Body.clear();
+                    req[client_fd].outfile.close();
+                    req[client_fd].epol = 0;
+                    return;
+                }
+            }
+
             else if(req[client_fd].Post_status == "chunked")
             {
                 if (!req[client_fd].Body.empty())
@@ -291,7 +303,7 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     req[client_fd].Body.clear();
                 }
             }
-            stringOfrequest.erase(client_fd);
+           
             if (req[client_fd].endOfrequest)
                 req[client_fd].epol = 0;
         }
@@ -302,18 +314,12 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         size_t size = req[client_fd].Bytes_readed;
         char rec_b[size];
         memset(rec_b, 0, size - 1);
-        //
+
         if (req[client_fd].Post_status == "Bainary/Row")
         {
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 req[client_fd].lenght_Readed += n_read;
-                if (!req[client_fd].Body.empty())
-                {
-                    req[client_fd].outfile.write(rec_b, n_read);
-                    req[client_fd].Body.clear();
-                }
-                   
                 req[client_fd].outfile.write(rec_b, n_read);
                 if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
                 {
@@ -341,7 +347,6 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         {
             size_t pos;
             size_t pos1;
-            std::cerr << req[client_fd].Body << std::endl;
              if (!req[client_fd].Body.empty())
             {
                 std::string str;
@@ -434,12 +439,114 @@ void fill_envirements(cgi_args *cgi, std::map<int, Request> &req, int client_fd)
     }
 }
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <iostream>
-#include <fstream>
-#include <fcntl.h>
-#include <unistd.h>
+void forking( int client_fd, std::map<int, Request> &req)
+{
+    req[client_fd].is_forked_before = 1;
+    if (pipe(req[client_fd].pipefd) == -1)
+        perror("pipe");
+    req[client_fd].pid_of_the_child = fork();
+
+    if (req[client_fd].pid_of_the_child  == -1)
+        perror("fork");
+}
+
+void child_proc(int client_fd, std::map<int, Request> &req)
+{
+    cgi_args args;
+    close(req[client_fd].pipefd[0]); 
+    dup2(req[client_fd].pipefd[1], 1); 
+    close(req[client_fd].pipefd[1]);
+    int fd ;
+    if(req[client_fd].method == "POST")
+    {
+        fd = open(req[client_fd].outfile_name.c_str(),O_RDONLY | std::ios::binary);
+        dup2(fd, 0);
+        close (fd);
+    }   
+    fill_envirements(&args, req, client_fd);
+    if (execve(args.args[0], args.args, args.env) == -1)
+    {
+        perror("exec = ");
+    }
+    exit(127);
+}
+
+int adding_pipe_2ep(epol *ep, int client_fd, std::map<int, Request> &req)
+{
+    ep->ev.events = EPOLLIN ;
+    ep->ev.data.fd = req[client_fd].pipefd[0];
+    if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, req[client_fd].pipefd[0], &ep->ev) == -1)
+    {
+        epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], &ep->ev);
+        close(req[client_fd].pipefd[0]);
+        return 0;
+    }
+    req[client_fd].time_of_child = clock();
+    close(req[client_fd].pipefd[1]); 
+    return 1;
+}
+
+int checking_timeout(int client_fd, std::map<int, Request> &req,Response& resp)
+{
+     pid_t retwait = waitpid(req[client_fd].pid_of_the_child, 0, WNOHANG);
+    if (retwait == 0)
+    {
+        clock_t end = clock();
+        double elapsed_seconds = static_cast<double>(end - req[client_fd].time_of_child) / CLOCKS_PER_SEC;
+        if(elapsed_seconds >= 4)
+        {
+            kill(req[client_fd].pid_of_the_child, SIGKILL);
+            req[client_fd].status = "503";
+            resp.response_by_a_page("error/503.html");
+            return 0;
+        }
+        else
+        {  
+            return 1;       
+        }
+    }
+    else
+    {
+        req[client_fd].child_exited = 1;
+    }
+    return 1;
+}
+
+int cgi_response(epol *ep, int client_fd, std::map<int, Request> &req,int  fd_ready,Response& resp)
+{
+    char buffer[70000];
+    ssize_t bytesRead;
+    if ((bytesRead = read(req[client_fd].pipefd[0], buffer, sizeof(buffer))) > 0)
+    {
+        if(req[client_fd].target.find("data.py") != std::string::npos)
+        {
+            std::string a;
+            std::string response_header = resp.cgi_header(a);
+            write(client_fd, response_header.c_str(), response_header.size());
+            write(client_fd,buffer,bytesRead);
+            std::remove(req[client_fd].outfile_name.c_str());
+            epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], NULL);
+            close(req[client_fd].pipefd[0]);
+        }
+        else
+        {
+            std::string header;
+            std::string body;
+            header.append(buffer,bytesRead);
+            body.append(buffer,bytesRead);
+            header = header.substr(0,header.find("\r\n\r\n")) ;
+            body = body.substr(header.find("\r\n\r\n") + 4);
+            std::string response_header = resp.cgi_header(header);
+            write(client_fd, response_header.c_str(), response_header.size());
+            write(client_fd,body.c_str(),body.size());
+            std::remove(req[client_fd].outfile_name.c_str());
+            epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], NULL);
+            close(req[client_fd].pipefd[0]);
+        }
+        return 0;
+    }
+    return 0;
+}
 
 int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
 {
@@ -448,81 +555,17 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
     Response resp(client_fd,req);
     if(resp.is_cgi() && req[client_fd].is_forked_before == 0 && req[client_fd].state_of_cgi == 1)
     { 
-        
         if(req[client_fd].is_forked_before == 0)
-        {
-            req[client_fd].is_forked_before = 1;
-            if (pipe(req[client_fd].pipefd) == -1)
-            {
-                perror("pipe");
-            }
-           
-            req[client_fd].pid_of_the_child = fork();
-
-            if (req[client_fd].pid_of_the_child  == -1)
-            {
-                perror("fork");
-            }
-        }
-        if (req[client_fd].pid_of_the_child== 0) 
-        {   
-            std::string met;
-            cgi_args args;
-            close(req[client_fd].pipefd[0]); 
-            dup2(req[client_fd].pipefd[1], 1); 
-            close(req[client_fd].pipefd[1]);
-            int fd ;
-            if(req[client_fd].method == "POST")
-            {
-                fd = open(req[client_fd].outfile_name.c_str(),O_RDONLY | std::ios::binary);
-                dup2(fd, 0);
-                close (fd);
-            }   
-            fill_envirements(&args, req, client_fd);
-            if (execve(args.args[0], args.args, args.env) == -1)
-            {
-                perror("exec = ");
-            }
-            exit(127);
-        } 
+            forking(client_fd,req);
+        if (req[client_fd].pid_of_the_child== 0)   
+            child_proc(client_fd,req);
         else 
-        { 
-           std::cerr << "ss " << std::endl;
-            ep->ev.events = EPOLLIN ;
-            ep->ev.data.fd = req[client_fd].pipefd[0];
-            if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, req[client_fd].pipefd[0], &ep->ev) == -1)
-            {
-                exit(1);
-                close(req[client_fd].pipefd[0]);
-            }
-            req[client_fd].time_of_child = clock();
-            close(req[client_fd].pipefd[1]); 
-        }
+            return (adding_pipe_2ep(ep,client_fd,req)); 
         return 1;
     }
     else if(resp.is_cgi() && req[client_fd].is_forked_before == 1 && req[client_fd].child_exited == 0)
     {
-        pid_t retwait = waitpid(req[client_fd].pid_of_the_child, 0, WNOHANG);
-        if (retwait == 0)
-        {
-            clock_t end = clock();
-            double elapsed_seconds = static_cast<double>(end - req[client_fd].time_of_child) / CLOCKS_PER_SEC;
-            if(elapsed_seconds >= 4)
-            {
-                kill(req[client_fd].pid_of_the_child, SIGKILL);
-                req[client_fd].status = "503";
-                resp.response_by_a_page("error/503.html");
-            }
-            else
-            {  
-                return 1;       
-            }
-        }
-        else
-        {
-            req[client_fd].child_exited = 1;
-        }
-        return 1;
+        return (checking_timeout(client_fd,req,resp));
     }
     else if(resp.is_cgi() && req[client_fd].is_forked_before == 1 && req[client_fd].child_exited == 1)
     {
@@ -530,43 +573,10 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
         {
             if(req[client_fd].pipefd[0] == ep->events[i].data.fd)
             {
-
-                char buffer[70000];
-                ssize_t bytesRead;
-                if ((bytesRead = read(req[client_fd].pipefd[0], buffer, sizeof(buffer))) > 0)
-                {
-                    if(req[client_fd].target.find("data.py") != std::string::npos)
-                    {
-                        std::string a;
-                        std::string response_header = resp.cgi_header(a);
-                        write(client_fd, response_header.c_str(), response_header.size());
-                        write(client_fd,buffer,bytesRead);
-                        std::remove(req[client_fd].outfile_name.c_str());
-                        epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], NULL);
-                        close(req[client_fd].pipefd[0]);
-                    }
-                    else
-                    {
-                        std::string header;
-                        std::string body;
-                        header.append(buffer,bytesRead);
-                        body.append(buffer,bytesRead);
-                        header = header.substr(0,header.find("\r\n\r\n")) ;
-                        body = body.substr(header.find("\r\n\r\n") + 4);
-                        std::string response_header = resp.cgi_header(header);
-                        write(client_fd, response_header.c_str(), response_header.size());
-                        write(client_fd,body.c_str(),body.size());
-                        std::remove(req[client_fd].outfile_name.c_str());
-                        epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, req[client_fd].pipefd[0], NULL);
-                        close(req[client_fd].pipefd[0]);
-                    }
-                    return 0;
-                }
+                return(cgi_response(ep,client_fd,req,fd_ready,resp));
             }
-           
         }
         return 1;
-        
     }
     else if(resp.is_post())
     {
@@ -623,46 +633,47 @@ uint32_t ipToUint32(std::string &ip)
     return (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 }
 
-void fill_ser_Add(Server &ser, int i)
+void fill_ser_Add(Server &ser)
 {
-    ser.seraddr_s[i].sin_family = AF_INET;
-    ser.seraddr_s[i].sin_addr.s_addr = htonl(ipToUint32(ser.host));
-    ser.seraddr_s[i].sin_port = htons(ser.listen[i]);
+    ser.seraddr_s.sin_family = AF_INET;
+    ser.seraddr_s.sin_addr.s_addr = htonl(ipToUint32(ser.host));
+    ser.seraddr_s.sin_port = htons(ser.listen);
 }
 
 void init(Server &ser, epol *ep)
 {
-    std::cerr << ser.listen.size() <<std::endl;
-    for (int i = 0; i < ser.listen.size(); i++)
-    {
-        if ((ser.server_sock[i] = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    //std::cerr << ser.listen.size() <<std::endl;
+    //for (int i = 0; i < ser.listen.size(); i++)
+    //{
+        if ((ser.server_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
             err("failed to create socket");
         int reuse = 1;
-        if (setsockopt(ser.server_sock[i], SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
+        if (setsockopt(ser.server_sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
             err("setsockopt SO_REUSEADDR failed");
-        fill_ser_Add(ser, i);
-        if ((bind(ser.server_sock[i], (struct sockaddr *)&ser.seraddr_s[i], sizeof(ser.seraddr_s[i]))) < 0)
+        fill_ser_Add(ser);
+        if ((bind(ser.server_sock, (struct sockaddr *)&ser.seraddr_s, sizeof(ser.seraddr_s))) < 0)
             err("bindddddd");
-        if ((listen(ser.server_sock[i], 10)) < 0)
+        if ((listen(ser.server_sock, 10)) < 0)
             err("listen");
 
         ep->ev.events = EPOLLIN;
-        ep->ev.data.fd = ser.server_sock[i];
-        if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, ser.server_sock[i], &ep->ev) == -1)
+        ep->ev.data.fd = ser.server_sock;
+        if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, ser.server_sock, &ep->ev) == -1)
         {
             close(ep->ep_fd);
-            close(ser.server_sock[i]);
+            close(ser.server_sock);
             err("epoll ctl");
         }
-    }
+    //}
 }
 
-void accepting_new_clients(int i,int j,std::vector<Server>& servers,epol *ep,std::map<int, Request>& requests,std::map<int,clock_t> &timer)
+void accepting_new_clients(int i,Server& servers,epol *ep,std::map<int, Request>& requests,std::map<int,clock_t> &timer)
 {
-    if (std::find(servers[j].server_sock.begin(), servers[j].server_sock.end(), ep->events[i].data.fd) != servers[j].server_sock.end())
+    if (servers.server_sock == ep->events[i].data.fd )
     {
+        
         int client_fd = accept(ep->events[i].data.fd, NULL, NULL);
-
+        //std::cerr << "aceept = " << client_fd << std::endl;
         if (client_fd == -1)
         {
             std::cout << "accepting" << std::endl;
@@ -671,7 +682,7 @@ void accepting_new_clients(int i,int j,std::vector<Server>& servers,epol *ep,std
         timer[client_fd]= clock();
         ep->ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
         ep->ev.data.fd = client_fd;
-        servers[j].fd_sock.push_back(client_fd);
+        servers.fd_sock.push_back(client_fd);
         if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, client_fd, &ep->ev) == -1)
         {
             std::cout << "epoll_ctl" << std::endl;
@@ -689,19 +700,21 @@ void run(std::vector<Server> servers, epol *ep)
     while (1)
     {
         // std::cout << "waiting for new client ..." << std::endl;
-        int fd_ready = epoll_wait(ep->ep_fd, ep->events, 10, -1);
+        int fd_ready = epoll_wait(ep->ep_fd, ep->events, 1024, -1);
+        // std::cerr << fd_ready <<std::endl;
         if (fd_ready == -1)
             err("epoll_wait");
         for (int i = 0; i < fd_ready; i++)
         {
             for (int j = 0; j < servers.size(); j++)
             {
-                accepting_new_clients(i,j,servers,ep,requests,timer);
+                accepting_new_clients(i,servers[j],ep,requests,timer);
             }
             for (int j = 0; j < servers.size(); j++)
             {
                 if (std::find(servers[j].fd_sock.begin(), servers[j].fd_sock.end(), ep->events[i].data.fd) != servers[j].fd_sock.end())
                 {
+                   
                     if(ep->events[i].events & EPOLLERR || ep->events[i].events & EPOLLHUP || ep->events[i].events & EPOLLRDHUP)
                     {
                         
@@ -727,7 +740,7 @@ void run(std::vector<Server> servers, epol *ep)
                     {
                         if (!response(ep, ep->events[i].data.fd, requests,fd_ready))
                         {
-                           
+                            
                             epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, ep->events[i].data.fd, NULL);
                             close(ep->events[i].data.fd);
                             std::map<int, Request>::iterator it = requests.find(ep->events[i].data.fd);

@@ -55,11 +55,10 @@ class Request
         bool state_of_cgi;
         bool state_of_upload;
         bool is_cgi;
-
     public :
 
         static int num_file;
-        Request(std::string req, Server server);
+        Request(std::string req, Server server, std::vector<Server> &servers);
         Request(Request const &req);
         Request();
         void init();
@@ -79,6 +78,7 @@ class Request
         void fill_extensions_map();
         void fill_error_pages_map();
         //
+        void search_for_ServerName(std::vector<Server> &servers, Server &serv);
 
         //uri handling
         void long_uri(Server &serv);

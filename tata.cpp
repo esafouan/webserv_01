@@ -503,7 +503,6 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
                 int fd = open("directorie/test.txt" , O_RDONLY , 0777);
                 if ((bytesRead = read(fd, buffer, sizeof(buffer))) > 0)
                 {
-                    std::cerr << bytesRead << std::endl;
                     if(req[client_fd].target.find("data.py") != std::string::npos)
                     {
                         std::string tmp(buffer);
@@ -608,7 +607,7 @@ void fill_ser_Add(Server &ser, int i)
     ser.seraddr_s[i].sin_port = htons(ser.listen[i]);
 }
 
-void init(Server &ser, epol *ep)
+void init(Server &ser, epol *ep,)
 {
     for (int i = 0; i < ser.listen.size(); i++)
     {

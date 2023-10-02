@@ -59,7 +59,6 @@ void Request:: error_handling(Server &serv)
         {
             if (access(target.c_str(), X_OK) == -1)
             {
-                std::cerr <<"tar = " <<target <<std::endl;
                 status = "403";
             }
                
