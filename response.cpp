@@ -138,7 +138,6 @@ std::string Response::cookie_header() {
 void Response::response_by_a_page(std::string path)
 {
     size_t file_size;
-    std::cout << "1 = " <<path << std::endl;
 
     std::ifstream fd_file(path.c_str());
     fd_file.seekg(0, std::ios::end);
@@ -234,18 +233,10 @@ std::string Response::generateDirectoryListing()
                         if (S_ISDIR(fileStat.st_mode) && entryName[entryName.size() - 1 ]!= '/')
                             entryName += "/";
                     }
-                    htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response + "/" << entryName   << "\">" << entryName  << "</a></p>\n";
+                    if (req[client_fd].uri_for_response[req[client_fd].uri_for_response.size() - 1 ] != '/')
+                        req[client_fd].uri_for_response += "/";
+                    htmlStream << "<p><a href=\"" << req[client_fd].uri_for_response  << entryName   << "\">" << entryName  << "</a></p>\n";
                 } 
-                else 
-                {
-                    struct stat fileStat;
-                    if (stat((req[client_fd].target + entryName).c_str(), &fileStat) == 0)
-                    {
-                        if (S_ISDIR(fileStat.st_mode)&& entryName[entryName.size() - 1 ]!= '/')
-                            entryName += "/";
-                    }
-                    htmlStream << "<p><a href=\"" << entryName << "\">" << entryName << "</a></p>\n";
-                }
             }
         }
         closedir(dir);

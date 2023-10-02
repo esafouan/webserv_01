@@ -56,6 +56,9 @@ Request &Request::operator=(Request const &req)
     this->extensions = req.extensions;
     this->state_of_cgi = req.state_of_cgi;
     this->state_of_upload = req.state_of_upload;
+    this->Body = req.Body;
+    is_cgi = req.is_cgi;
+
     return (*this);
 }
 
@@ -81,19 +84,30 @@ void Request::init()
     this->path_to_upload = "directorie/upload/";
     this->state_of_cgi = 1;
     this->state_of_upload = 1;
+    this->Body = "";
+    is_cgi = 0;
 
-    
 }
 
 Request::Request(std::string req, Server server)
 {
     init();
+
+    
+
     if (!server.upload_path.empty())
     {
         if (server.upload_path[server.upload_path.length() - 1] != '/')
             server.upload_path += "/";
         this->path_to_upload = server.upload_path;
     }
+
+    size_t pos = req.find("\r\n\r\n");
+    if (pos != req.npos)
+        Body = req.substr(pos + 4);
+ 
+    req = req.substr(0, pos + 2);
+
     ft_split(req, "\r\n", myHeaders);
     fill_method_type();    
     fill_query();
@@ -103,11 +117,12 @@ Request::Request(std::string req, Server server)
     this->uri_for_response = target;
     fill_headers();
 
+    if (target.find(".php") != target.npos || target.find(".py") != target.npos)
+        is_cgi = 1;
    //print Headers
     // for (int i = 0; i < StoreHeaders.size(); i++)
-    //     std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
-    
-    error_handling(server); 
+      //   std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+    error_handling(server);
 
     if (method == "POST" && status == "200")
     {
@@ -127,7 +142,6 @@ Request::Request(std::string req, Server server)
         else
             status = "401";
     }
-    
     if (find_key("Content-Length", StoreHeaders) || find_key("Content-Type", StoreHeaders))
     {
         content_type = "CONTENT_TYPE=" + valueOfkey("Content-Type", StoreHeaders);
@@ -138,7 +152,7 @@ Request::Request(std::string req, Server server)
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
     generate_error_page(server);
-
+    std::cout << "fin = " << target << std::endl;
 } 
 
 Request::~Request(){

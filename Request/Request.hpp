@@ -49,11 +49,12 @@ class Request
         std::string accept;
         std::map<std::string, std::string> pages;
         std::map<std::string, std::string> extensions;
-
+        std::string Body;
         std::string path_to_upload;
 
         bool state_of_cgi;
         bool state_of_upload;
+        bool is_cgi;
 
     public :
 
@@ -82,6 +83,7 @@ class Request
         //uri handling
         void long_uri(Server &serv);
         void short_uri(Server &serv);
+      
         int count_slash(std::string tar);
         void replace_slash_in_target(Server &serv);
         void directory_moved_permanently();

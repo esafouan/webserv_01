@@ -8,6 +8,7 @@ void Request::replace_slash_in_target(Server &serv)
     {
         if (serv.locations[i].NAME == "/")
         {
+            flag_uri = 1;
             no_root_location = 1;
             state_of_cgi = serv.locations[i].cgi;
             state_of_upload = serv.locations[i].upload_s;
@@ -15,7 +16,11 @@ void Request::replace_slash_in_target(Server &serv)
                 || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
                         status = "405";
-            
+            if (method == "POST" && this->state_of_upload == 0)
+            {
+                if (!is_cgi)
+                    status = "403"; 
+            }
             if (serv.locations[i]._return == "")
             {
                 if (serv.locations[i].index == "")
@@ -68,7 +73,11 @@ void Request::short_uri(Server &serv)
                     || (method == "POST" && serv.locations[i].POST == false) 
                     || (method == "DELETE" && serv.locations[i].DELETE == false))
                     status = "405";
- 
+                if (method == "POST" && this->state_of_upload == 0)
+                {
+                    if (!is_cgi)
+                        status = "403"; 
+                }
                 if (serv.locations[i]._return == "")
                 {
                     if (serv.locations[i].index == "")
@@ -96,6 +105,11 @@ void Request::short_uri(Server &serv)
                 }
             }
         }
+    }
+
+    if (!flag_uri && target[0] == '/')
+    {
+
     }
 }
 
@@ -128,6 +142,15 @@ void Request::long_uri(Server &serv)
                         state_of_cgi = serv.locations[i].cgi;
                     if (state_of_upload != 0)
                         state_of_upload = serv.locations[i].upload_s;
+                    if (method == "POST" && this->state_of_upload == 0)
+                    {
+                        if (!is_cgi)
+                        {
+                            std::cout << "00"<<std::endl;
+                             status = "403"; 
+                        }
+                           
+                    }
                     if (serv.locations[i]._return == "")
                     {
                         if (serv.locations[i].index == "")
@@ -138,7 +161,10 @@ void Request::long_uri(Server &serv)
                                 if (serv.locations[i].autoindex == true)
                                     target += serv.locations[i].root;
                                 else
+                                {
+                                    std::cout << "111"<<std::endl;
                                     status = "403";
+                                }
                             }
                             else
                                 target = serv.index;

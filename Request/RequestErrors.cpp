@@ -13,7 +13,7 @@ void Request::generate_error_page(Server &server)
     }  
 }
 
-void Request::error_handling(Server &serv)
+void Request:: error_handling(Server &serv)
 {
     if (method != "GET" && method != "DELETE" && method != "POST")
     {
@@ -35,11 +35,13 @@ void Request::error_handling(Server &serv)
         else if (count_slash(target) > 1)
             long_uri(serv);
     }
+   
     if (status == "200")
-    {   if (access(target.c_str(), F_OK ) == -1)
+    {   
+        if (access(target.c_str(), F_OK ) == -1)
+        {
             status = "404";
-        if(method == "POST" && this->state_of_upload == 0)
-            status = "403";
+        }
         else if (find_key("Content-Length", StoreHeaders))
         {
             std::string val = valueOfkey("Content-Length", StoreHeaders);
@@ -47,13 +49,20 @@ void Request::error_handling(Server &serv)
             if (content > serv.max_body)
                 status = "413";
         }
-     
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
-            status = "403";
+        {
+             std::cout << "3333"<<std::endl;
+             status = "403";
+        }
+           
         else if (target.find(".php") != target.npos || target.find(".py") != target.npos)
         {
             if (access(target.c_str(), X_OK) == -1)
+            {
+                std::cerr <<"tar = " <<target <<std::endl;
                 status = "403";
+            }
+               
         }
         else if (httpVersion != "HTTP/1.1")
             status = "400";
