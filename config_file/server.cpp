@@ -6,7 +6,10 @@ Server::Server()
     this->host = "";
     this->root = "";
     this->index = "";
-    int max_body = -1;
+    server_name = "";
+    upload_path = "";
+    max_body = -1;
+    listen = -1;
 }
 
 void Server::ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts)
@@ -103,10 +106,7 @@ int   Server::get_max_body(Server &server, std::vector<std::string> &hold)
     std::istringstream stream(hold[1]);
     long long num;
     if (stream >> num)
-    {
-        if (num > 500000000)
-            return 0;
-    }
+    {}
     else {
         return 0;
     }

@@ -21,6 +21,13 @@ void Request::replace_slash_in_target(Server &serv)
                 if (!is_cgi)
                     status = "403"; 
             }
+            if (serv.locations[i].upload_path == "")
+            {
+                if(serv.upload_path != "")
+                    this->path_to_upload = serv.upload_path;
+            }
+            else
+                this->path_to_upload = serv.locations[i].upload_path;
             if (serv.locations[i]._return == "")
             {
                 if (serv.locations[i].index == "")
@@ -52,6 +59,7 @@ void Request::replace_slash_in_target(Server &serv)
 int Request::count_slash(std::string tar)
 {
     int count = 0;
+    
     for (int i = 0; i < tar.length(); i++)
         if (tar[i] == '/')
             count++;
@@ -78,6 +86,13 @@ void Request::short_uri(Server &serv)
                     if (!is_cgi)
                         status = "403"; 
                 }
+                if (serv.locations[i].upload_path == "")
+                {
+                    if(serv.upload_path != "")
+                        this->path_to_upload = serv.upload_path;
+                }
+                else
+                    this->path_to_upload = serv.locations[i].upload_path;
                 if (serv.locations[i]._return == "")
                 {
                     if (serv.locations[i].index == "")
@@ -136,13 +151,20 @@ void Request::long_uri(Server &serv)
                     if ((method == "GET" && serv.locations[i].GET == false) 
                         || (method == "POST" && serv.locations[i].POST == false) 
                         || (method == "DELETE" && serv.locations[i].DELETE == false))
-                            status = "405";
-
+                            status = "405";         
                     else if (method == "POST" && this->state_of_upload == 0)
                     {
                         if (!is_cgi)
                             status = "403";   
                     }
+                    if (serv.locations[i].upload_path == "")
+                    {
+                        if(serv.upload_path != "")
+                            this->path_to_upload = serv.upload_path;
+                    }
+                    else
+                        this->path_to_upload = serv.locations[i].upload_path;
+ 
                     if (serv.locations[i]._return == "")
                     {
                         if (serv.locations[i].index == "")
@@ -153,9 +175,7 @@ void Request::long_uri(Server &serv)
                                 if (serv.locations[i].autoindex == true)
                                     target += serv.locations[i].root;
                                 else
-                                {
                                     status = "403";
-                                }
                             }
                             else
                                 target = serv.index;
@@ -188,7 +208,6 @@ void Request::long_uri(Server &serv)
                 if (target[target.length() - 1] != '/')
                     target += "/";
             }
-
         }
     }
     if (slash)

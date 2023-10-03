@@ -308,8 +308,22 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                     }
                 }
             }
+            if(req[client_fd].status != "200" && req[client_fd].method == "POST")
+            {
+           
+                epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, client_fd, NULL);
+                ep->ev.events = EPOLLOUT;
+                ep->ev.data.fd = client_fd;
+                if (epoll_ctl(ep->ep_fd, EPOLL_CTL_ADD, client_fd, &ep->ev) == -1)
+                {
+                    close(client_fd);
+                    err("epoll ctl");
+                }
+
+            }
             if (req[client_fd].endOfrequest)
             {
+          
                 req[client_fd].epol = 0;
             }
         }
@@ -561,6 +575,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
 
     signal(SIGPIPE, SIG_IGN);
     Response resp(client_fd,req);
+   
     if(resp.is_cgi() && req[client_fd].is_forked_before == 0 && req[client_fd].state_of_cgi == 1)
     { 
         if(req[client_fd].is_forked_before == 0)

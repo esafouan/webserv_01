@@ -4,10 +4,8 @@ void Request::generate_error_page(Server &server)
 {
     if (status != "200" && status != "301")
     {
-        if(server.error_page.find(status) != server.error_page.end())
-        {
+        if (server.error_page.find(status) != server.error_page.end())
             target = server.error_page[status];
-        }
         else
             target = pages[status];
     }  
@@ -28,20 +26,17 @@ void Request:: error_handling(Server &serv)
     {
         if (target == "/")
             replace_slash_in_target(serv);
-
         else if (count_slash(target) == 1 && target != "/")
             short_uri(serv);
-
         else if (count_slash(target) > 1)
             long_uri(serv);
     }
-   
+
+    real_path();
     if (status == "200")
     {   
         if (access(target.c_str(), F_OK ) == -1)
-        {
             status = "404";
-        }
         else if (find_key("Content-Length", StoreHeaders) && serv.max_body > 0)
         {
             std::stringstream stream(valueOfkey("Content-Length", StoreHeaders));
@@ -51,17 +46,12 @@ void Request:: error_handling(Server &serv)
                 status = "413";
         }
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
-        {
             status = "403";
-        }
            
         else if (target.find(".php") != target.npos || target.find(".py") != target.npos)
         {
             if (access(target.c_str(), X_OK) == -1)
-            {
-                status = "403";
-            }
-               
+                status = "403"; 
         }
 
         if (httpVersion != "HTTP/1.1")
@@ -76,5 +66,4 @@ void Request:: error_handling(Server &serv)
         else if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
             status = "400";
     }
-
 }

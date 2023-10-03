@@ -10,8 +10,6 @@ void Request::ft_split(std::string input, std::string delimiter, std::vector<std
         parts.push_back(input.substr(startPos, endPos - startPos));
         startPos = endPos + delimiter.length();
     }
-
-    // Add the last part
     parts.push_back(input.substr(startPos));
 }
 

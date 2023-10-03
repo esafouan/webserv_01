@@ -82,7 +82,7 @@ void Request::init()
     this->header_for_cgi_resp = 0;
     this->child_exited = 0;
     this->pipefd[0] = -1;
-    this->path_to_upload = "directorie/upload/";
+    this->path_to_upload = "/upload";
     this->state_of_cgi = 1;
     this->state_of_upload = 1;
     this->Body = "";
@@ -106,16 +106,23 @@ void Request::search_for_ServerName(std::vector<Server> &servers, Server &serv)
   
 }
 
+
+void Request::real_path()
+{
+    char new_path[PATH_MAX];
+
+    if (realpath(target.c_str(), new_path) != 0)
+    {
+        if(new_path.find("directorie") != new_path.npos)
+            traget = new_path;
+        else
+            status = "403";
+    }
+}
+
 Request::Request(std::string req, Server server, std::vector<Server> &servers)
 {
     init();
-    if (!server.upload_path.empty())
-    {
-        if (server.upload_path[server.upload_path.length() - 1] != '/')
-            server.upload_path += "/";
-        this->path_to_upload = server.upload_path;
-    }
-
     size_t pos = req.find("\r\n\r\n");
     if (pos != req.npos)
         Body = req.substr(pos + 4);
@@ -138,6 +145,11 @@ Request::Request(std::string req, Server server, std::vector<Server> &servers)
     if (find_key("Host", StoreHeaders))
         search_for_ServerName(servers, server);
     error_handling(server);
+
+   
+    std::cout << "tar -> " <<target << std::endl;
+    std::cout << "stat -> " <<status << std::endl;
+
 
     if (method == "POST" && status == "200")
     {
@@ -167,9 +179,7 @@ Request::Request(std::string req, Server server, std::vector<Server> &servers)
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
     generate_error_page(server);
-    // std::cout << target << std::endl;
-    // std::cerr<< endOfrequest <<std::endl;
-
+    
 } 
 
 Request::~Request(){

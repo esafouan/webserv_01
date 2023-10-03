@@ -5,7 +5,8 @@ location::location()
     NAME = "";
     root = "";    
     index = "";
-    _return = "";  
+    _return = "";
+    upload_path = "";
 }
 
 int location::post(location &location, std::vector<std::string> &hold)
@@ -70,7 +71,7 @@ int location::name(location &location, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
         return 0;
-    if(hold[1] != "/" && hold[1][0] == '/')
+    if(hold[1] != "/" && ( hold[1][0] == '/' || hold[1][hold[1].length() - 1] == '/'))
         throw error_config();
     location.NAME = hold[1];
     
@@ -159,7 +160,8 @@ int location::uploadpath(location &location, std::vector<std::string> &hold)
     if (hold.size() != 2)
         return 0;
     location.upload_path = hold[1];
-
+    if (hold[1][hold[1].length() - 1] != '/')
+        return (0);
     duplicate_in_location.push_back("u_path");
     return 1;
 }

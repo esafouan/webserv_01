@@ -98,6 +98,6 @@ class Request
         void print_element();
         void error_handling(Server &serv);
         void Delete_methode();
-
+        void real_path();
         ~Request();
 };
