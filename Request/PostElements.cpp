@@ -14,7 +14,6 @@ std::string Request::get_separater(std::string val)
 
 void Request::get_post_status()
 {
-    this->lenght_of_content = std::atoi(valueOfkey("Content-Length", StoreHeaders).c_str());
     this->extension = this->extensions[valueOfkey("Content-Type", StoreHeaders)];
 
     if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) == "chunked")

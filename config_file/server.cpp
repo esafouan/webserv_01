@@ -6,7 +6,7 @@ Server::Server()
     this->host = "";
     this->root = "";
     this->index = "";
-    int max_body = 0;
+    int max_body = -1;
 }
 
 void Server::ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts)
@@ -22,8 +22,6 @@ void Server::ft_split(std::string input, std::string delimiter, std::vector<std:
             parts.push_back(tmp);
         startPos = endPos + delimiter.length();
     }
-
-    // Add the last part
     tmp = input.substr(startPos);
     if(!tmp.empty())
             parts.push_back(tmp);
@@ -101,32 +99,36 @@ int   Server::get_max_body(Server &server, std::vector<std::string> &hold)
     if (hold.size() != 2)
         return 0;
     if(!check_digits(hold[1]))
+      return 0;
+    std::istringstream stream(hold[1]);
+    long long num;
+    if (stream >> num)
+    {
+        if (num > 500000000)
+            return 0;
+    }
+    else {
         return 0;
-    if (hold[1].length() > 10)
-        return 0;
-    int max = atoi(hold[1].c_str());
-    if (max > 2000000000)
-        return 0;
-    server.max_body = max;
+    }
+    server.max_body = num;
     server.duplicate_in_server.push_back("max");
 
     return(1);
 }
 
 int   Server::get_root(Server &server, std::vector<std::string> &hold)
-{
-    //check for '/'
-
+{  
     if (hold.size() != 2)
         return 0;
+    if(hold[1][hold[1].length() - 1] != '/')
+        return (0);
     server.root = hold[1];
     server.duplicate_in_server.push_back("root");
-    return(1);
+    return (1);
 }
 
 int   Server::get_index(Server &server, std::vector<std::string> &hold)
 {
-    //check for '/'
     if (hold.size() != 2)
         return 0;
     server.index = hold[1];
@@ -144,9 +146,10 @@ int Server::get_error_page(Server &server, std::vector<std::string> &hold)
 
 int Server::Upload(Server &server, std::vector<std::string> &hold)
 {
-    //check for '/'
     if (hold.size() != 2)
         return 0;
+    if (hold[1][hold[1].length() - 1] != '/')
+        return (0);
     if(access(hold[1].c_str(), F_OK) == -1)
         return 0;
     server.upload_path = hold[1];
@@ -165,7 +168,7 @@ int Server::check_duplicate(Server &server)
             return 0;
         tmp[server.duplicate_in_server[i]] = "";
     }
-    // exit(0);
+ 
     return 1;
 }
 
@@ -173,7 +176,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
 {
     std::vector<std::string> holder;
     Server::ft_split(line, " ", holder);
-    //int flag = 0;
+
     if (!location_flag)
     {
         int flag = 0;
@@ -184,7 +187,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 flag = 1;
                 if (!(this->*(pointer_to_fun[i].my_function))(serv, holder))
                 {
-                    std::cout << "0"<< std::endl;
+
                     throw error_config();
                 }
             }
@@ -233,6 +236,8 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 if (!flag)
                 {
                     if (holder[0] != "}")
+                        throw error_config();
+                    if (!loc.loc_duplicate())
                         throw error_config();
                     serv.locations.push_back(loc);
                     break;
@@ -335,5 +340,6 @@ Server::Server(char *config_file)
 
 }
 
-Server::~Server(){
+Server::~Server()
+{
 }

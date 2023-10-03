@@ -42,17 +42,17 @@ void Request:: error_handling(Server &serv)
         {
             status = "404";
         }
-        else if (find_key("Content-Length", StoreHeaders))
+        else if (find_key("Content-Length", StoreHeaders) && serv.max_body > 0)
         {
-            std::string val = valueOfkey("Content-Length", StoreHeaders);
-            int content = std::atoi(val.c_str());
-            if (content > serv.max_body)
+            std::stringstream stream(valueOfkey("Content-Length", StoreHeaders));
+            stream >> this->lenght_of_content;
+            
+            if (this->lenght_of_content > serv.max_body)
                 status = "413";
         }
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
         {
-             std::cout << "3333"<<std::endl;
-             status = "403";
+            status = "403";
         }
            
         else if (target.find(".php") != target.npos || target.find(".py") != target.npos)
@@ -63,7 +63,8 @@ void Request:: error_handling(Server &serv)
             }
                
         }
-        else if (httpVersion != "HTTP/1.1")
+
+        if (httpVersion != "HTTP/1.1")
             status = "400";
         
         else if (find_key("Transfer-Encoding", StoreHeaders) && valueOfkey("Transfer-Encoding", StoreHeaders) != "chunked")

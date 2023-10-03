@@ -133,14 +133,12 @@ Request::Request(std::string req, Server server, std::vector<Server> &servers)
     if (target.find(".php") != target.npos || target.find(".py") != target.npos)
         is_cgi = 1;
    //print Headers
-    //for (int i = 0; i < StoreHeaders.size(); i++)
-      //  std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
+   //for (int i = 0; i < StoreHeaders.size(); i++)
+   //  std::cout << "val = " << StoreHeaders[i].first << " key = " << StoreHeaders[i].second << std::endl;
     if (find_key("Host", StoreHeaders))
         search_for_ServerName(servers, server);
-    std::cout <<  "cl= "<<valueOfkey("Content-Length", StoreHeaders)<<std::endl;;
-    
     error_handling(server);
-  
+
     if (method == "POST" && status == "200")
     {
         this->endOfrequest = 0;  
@@ -169,7 +167,9 @@ Request::Request(std::string req, Server server, std::vector<Server> &servers)
     if (find_key("Cookie", StoreHeaders))
         this->cookie += valueOfkey("Cookie", StoreHeaders);
     generate_error_page(server);
-    
+    // std::cout << target << std::endl;
+    // std::cerr<< endOfrequest <<std::endl;
+
 } 
 
 Request::~Request(){

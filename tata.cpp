@@ -503,6 +503,7 @@ int response(epol *ep, int client_fd, std::map<int, Request> &req,int fd_ready)
                 int fd = open("directorie/test.txt" , O_RDONLY , 0777);
                 if ((bytesRead = read(fd, buffer, sizeof(buffer))) > 0)
                 {
+                    
                     if(req[client_fd].target.find("data.py") != std::string::npos)
                     {
                         std::string tmp(buffer);

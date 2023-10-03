@@ -10,13 +10,15 @@ class Server
         std::string  host;
         std::string server_name;
         std::map <std::string, std::string> error_page;
-        int  max_body;
+        long long  max_body;
         std::string  root;
         std::string  index;
         std::vector <location> locations;
+
         std::vector<int > fd_sock; //client
         int  server_sock;
         SA_I seraddr_s;
+        
         std::vector <Server> servers;
         int location_flag;
         std::string line; 

@@ -63,6 +63,7 @@ class location
         int cgi_state(location &location, std::vector<std::string> &hold);
         int upload_state(location &location, std::vector<std::string> &hold);
         int uploadpath(location &location, std::vector<std::string> &hold);
+        int loc_duplicate();
         
         void    print()
         {

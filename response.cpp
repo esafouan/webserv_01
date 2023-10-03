@@ -159,7 +159,6 @@ void Response::response_by_a_page(std::string path)
     else
         perror("ss : ");
     fd_file.close();
-    
 }
 std::string Response::get_content_type()
 {
@@ -225,6 +224,7 @@ std::string Response::generateDirectoryListing()
         
             if (entryName != "." && entryName != "..")
             {
+
                 if(req[client_fd].flag_uri == 1)
                 {
                     struct stat fileStat;

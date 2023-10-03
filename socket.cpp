@@ -139,6 +139,7 @@ void Boundry(int client_fd, std::map<int, Request> &req, std::string &str)
            rest = str.length() - req[client_fd].boundary_separater.length();
         else
             rest = str.length();
+
         write_content(client_fd, req, 0, str, rest);
         req[client_fd].rest_of_boundry = str.substr(rest);
     }
@@ -159,6 +160,7 @@ void Boundry(int client_fd, std::map<int, Request> &req, std::string &str)
     {
         int rest = str.length() - (str.length() - pos);
         write_content(client_fd, req, 1, str, rest);
+
         req[client_fd].rest_of_boundry = str.substr(pos + 1);
         req[client_fd].open_boundry_file = 0; 
     }
@@ -266,46 +268,50 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
             }
             stringOfrequest.erase(client_fd);
 
-            if (req[client_fd].Post_status == "boundary")
+            if(req[client_fd].status == "200" && req[client_fd].method == "POST")
             {
-                if (req[client_fd].Body.find(req[client_fd].boundary_separater + "--") != std::string::npos)
+
+                if(req[client_fd].Post_status == "boundary")
                 {
-                    std::string str;
-                    str = req[client_fd].Body;
-                    req[client_fd].Body.clear();
-                    Boundry(client_fd, req, str);
+                    if (req[client_fd].Body.find(req[client_fd].boundary_separater + "--") != std::string::npos)
+                    {
+                        req[client_fd].Body.clear();
+                        Boundry(client_fd, req, req[client_fd].Body);
+                    }
                 }
-            }
+               
+                else if (req[client_fd].Post_status == "Bainary/Row")
+                {
+                    //std::cerr << "hey1"<<req[client_fd].Body <<std::endl;
+                    req[client_fd].lenght_Readed += req[client_fd].Body.size();
+                    if (!req[client_fd].Body.empty())
+                    {
+                        req[client_fd].outfile.write(req[client_fd].Body.c_str(), req[client_fd].Body.size());
+                        req[client_fd].Body.clear();
+                    }
+                    if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
+                    {
+                        req[client_fd].Body.clear();
+                        req[client_fd].outfile.close();
+                        req[client_fd].epol = 0;
+                        return;
+                    }
+                }
             
-            else if (req[client_fd].Post_status == "Bainary/Row")
-            {
-                req[client_fd].lenght_Readed += req[client_fd].Body.size();
-                if (!req[client_fd].Body.empty())
+                else if(req[client_fd].Post_status == "chunked")
                 {
-                    req[client_fd].outfile.write(req[client_fd].Body.c_str(), req[client_fd].Body.size());
-                    req[client_fd].Body.clear();
-                }
-                if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
-                {
-                    req[client_fd].Body.clear();
-                    req[client_fd].outfile.close();
-                    req[client_fd].epol = 0;
-                    return;
+                    if (!req[client_fd].Body.empty())
+                    {
+
+                        Chunked_helper(client_fd, req,req[client_fd].Body , req[client_fd].Body.size());
+                        req[client_fd].Body.clear();
+                    }
                 }
             }
-
-            else if(req[client_fd].Post_status == "chunked")
-            {
-                if (!req[client_fd].Body.empty())
-                {
-
-                    Chunked_helper(client_fd, req,req[client_fd].Body , req[client_fd].Body.size());
-                    req[client_fd].Body.clear();
-                }
-            }
-           
             if (req[client_fd].endOfrequest)
+            {
                 req[client_fd].epol = 0;
+            }
         }
     }
     
@@ -314,14 +320,14 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
         size_t size = req[client_fd].Bytes_readed;
         char rec_b[size];
         memset(rec_b, 0, size - 1);
-
+        //
         if (req[client_fd].Post_status == "Bainary/Row")
         {
             if ((n_read = read(client_fd, rec_b, size - 1)) > 0)
             {
                 req[client_fd].lenght_Readed += n_read;
                 req[client_fd].outfile.write(rec_b, n_read);
-                if (req[client_fd].lenght_Readed == req[client_fd].lenght_of_content)
+                if (req[client_fd].lenght_Readed >= req[client_fd].lenght_of_content)
                 {
                     req[client_fd].outfile.close();
                     req[client_fd].epol = 0;
@@ -329,6 +335,8 @@ void request_part(std::vector<Server> &servers, epol *ep, int client_fd, std::ma
                 }
                 memset(rec_b, 0, size - 1);
             }
+    
+
         }
 
         else if (req[client_fd].Post_status == "chunked")
@@ -671,9 +679,8 @@ void accepting_new_clients(int i,Server& servers,epol *ep,std::map<int, Request>
 {
     if (servers.server_sock == ep->events[i].data.fd )
     {
-        
         int client_fd = accept(ep->events[i].data.fd, NULL, NULL);
-        //std::cerr << "aceept = " << client_fd << std::endl;
+
         if (client_fd == -1)
         {
             std::cout << "accepting" << std::endl;
@@ -714,7 +721,6 @@ void run(std::vector<Server> servers, epol *ep)
             {
                 if (std::find(servers[j].fd_sock.begin(), servers[j].fd_sock.end(), ep->events[i].data.fd) != servers[j].fd_sock.end())
                 {
-                   
                     if(ep->events[i].events & EPOLLERR || ep->events[i].events & EPOLLHUP || ep->events[i].events & EPOLLRDHUP)
                     {
                         
@@ -740,7 +746,6 @@ void run(std::vector<Server> servers, epol *ep)
                     {
                         if (!response(ep, ep->events[i].data.fd, requests,fd_ready))
                         {
-                            
                             epoll_ctl(ep->ep_fd, EPOLL_CTL_DEL, ep->events[i].data.fd, NULL);
                             close(ep->events[i].data.fd);
                             std::map<int, Request>::iterator it = requests.find(ep->events[i].data.fd);
@@ -749,7 +754,7 @@ void run(std::vector<Server> servers, epol *ep)
                             servers[j].fd_sock.erase(std::find(servers[j].fd_sock.begin(), servers[j].fd_sock.end(), ep->events[i].data.fd));
                         }
                     }
-                    else
+                    else if(requests.count(ep->events[i].data.fd) == 0)
                     {
                         clock_t end = clock();
                         double elapsed_seconds = static_cast<double>(end -timer[ep->events[i].data.fd] ) / CLOCKS_PER_SEC;

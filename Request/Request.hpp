@@ -14,8 +14,8 @@ class Request
         //
 
         int header_flag;
-        int lenght_Readed;
-        int lenght_of_content;
+        long long lenght_Readed;
+        long long lenght_of_content;
         int calcul_chunk_flag;    
         int flag_uri;
         int epol;

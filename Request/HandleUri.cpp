@@ -21,7 +21,7 @@ void Request::replace_slash_in_target(Server &serv)
                 if (!is_cgi)
                     status = "403"; 
             }
-            if (status == "200" && serv.locations[i]._return == "")
+            if (serv.locations[i]._return == "")
             {
                 if (serv.locations[i].index == "")
                 {
@@ -78,7 +78,7 @@ void Request::short_uri(Server &serv)
                     if (!is_cgi)
                         status = "403"; 
                 }
-                if (status == "200" && serv.locations[i]._return == "")
+                if (serv.locations[i]._return == "")
                 {
                     if (serv.locations[i].index == "")
                     {
@@ -106,11 +106,6 @@ void Request::short_uri(Server &serv)
             }
         }
     }
-
-    if (!flag_uri && target[0] == '/')
-    {
-
-    }
 }
 
 void Request::long_uri(Server &serv)
@@ -133,7 +128,7 @@ void Request::long_uri(Server &serv)
             {
                 if (uri[j] == serv.locations[i].NAME)
                 {
-                    slash = 0;                    
+                    slash = 0;   
                     if (state_of_cgi != 0)
                         state_of_cgi = serv.locations[i].cgi;
                     if (state_of_upload != 0)
@@ -146,12 +141,9 @@ void Request::long_uri(Server &serv)
                     else if (method == "POST" && this->state_of_upload == 0)
                     {
                         if (!is_cgi)
-                        {
-                            status = "403";
-                        }
-                           
+                            status = "403";   
                     }
-                    if ( status == "200" && serv.locations[i]._return == "")
+                    if (serv.locations[i]._return == "")
                     {
                         if (serv.locations[i].index == "")
                         {
