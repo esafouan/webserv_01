@@ -7,6 +7,12 @@ location::location()
     index = "";
     _return = "";
     upload_path = "";
+    POST = 1;
+    autoindex = 1;
+    GET = 1;
+    DELETE = 1;
+    cgi = 1;
+    upload_s = 1;
 }
 
 int location::post(location &location, std::vector<std::string> &hold)
@@ -72,7 +78,7 @@ int location::name(location &location, std::vector<std::string> &hold)
     if (hold.size() != 2)
         return 0;
     if(hold[1] != "/" && ( hold[1][0] == '/' || hold[1][hold[1].length() - 1] == '/'))
-        throw error_config();
+        return 0;
     location.NAME = hold[1];
     
     return 1;
@@ -158,6 +164,8 @@ int location::upload_state(location &location, std::vector<std::string> &hold)
 int location::uploadpath(location &location, std::vector<std::string> &hold)
 {
     if (hold.size() != 2)
+        return 0; 
+    if(access(hold[1].c_str(), F_OK) == -1)
         return 0;
     location.upload_path = hold[1];
     if (hold[1][hold[1].length() - 1] != '/')

@@ -134,36 +134,50 @@ std::string Response::cookie_header() {
     std::string setCookieHeader = cookieName + "=" + cookieValue + "; ";
     return setCookieHeader;
 }
-
 void Response::response_by_a_page(std::string path)
 {
     size_t file_size;
-    std::cerr << "path = "<< path << std::endl;
+
     std::ifstream fd_file(path.c_str());
     fd_file.seekg(0, std::ios::end);
     std::streampos fileSize = fd_file.tellg();
     fd_file.seekg(0, std::ios::beg);
     std::string response_header = normal_pages_header((size_t)fileSize);
-    write(client_fd, response_header.c_str(), response_header.size());
+    // write(client_fd, response_header.c_str(), response_header.size());
     const size_t buffer_size = 1024;
     char buffer[buffer_size];
-    
     if (fd_file.read(buffer, (size_t)fileSize))
     {
-        ssize_t bytes_sent = write(client_fd, buffer, (size_t)fileSize);
+        response_header.append(buffer,(size_t)fileSize);
+        ssize_t bytes_sent = write(client_fd, response_header.c_str(), response_header.size());
+        
         if (bytes_sent == -1)
         {
             std::remove(req[client_fd].outfile_name.c_str());
+            perror("write  ");
+        }
+        else if(bytes_sent == 0)
+        {
+            perror("write1: ");
+            fd_file.close();
+            return ;
         }
     }
     else
-        perror("ss : ");
+        perror("read_file ");
     fd_file.close();
 }
 std::string Response::get_content_type()
 {
     const char *path = req[client_fd].target.c_str();
     const char *last_dot = strrchr(path, '.');
+   struct stat fileInfo;
+    
+    if (stat(path, &fileInfo) == 0) {
+        if (S_ISDIR(fileInfo.st_mode)) {
+            return "";
+        }
+    }
     if (last_dot)
     {
         if (strcmp(last_dot, ".css") == 0)
@@ -193,7 +207,7 @@ std::string Response::get_content_type()
         if (strcmp(last_dot, ".svg") == 0)
             return "image/svg+xml";
         if (strcmp(last_dot, ".txt") == 0)
-             return "text/plain";
+            return "text/plain";
          if (strcmp(last_dot, ".ico") == 0)
             return "image/ico";
         if (strcmp(last_dot, ".php") == 0 || strcmp(last_dot, ".py") == 0)
@@ -203,7 +217,7 @@ std::string Response::get_content_type()
             
     
     }
-    return "";
+    return "text/plain";
 }
 std::string Response::generateDirectoryListing()
 {
@@ -258,14 +272,17 @@ int Response::directorie_list()
     dir = generateDirectoryListing();
     file_size = dir.size();
     response_header = normal_pages_header((size_t)(file_size));
-    write(client_fd, response_header.c_str(), response_header.size());
-    const size_t buffer_size = 1024;
-    char buffer[buffer_size];
-    ssize_t bytes_read;
-    ssize_t bytes_sent = write(client_fd, dir.c_str(), dir.size());
+    // write(client_fd, response_header.c_str(), response_header.size());
+    response_header.append(dir);
+    ssize_t bytes_sent = write(client_fd, response_header.c_str(), response_header.size());
     if (bytes_sent == -1)
     {
-        perror("read ld ");
+        perror("write  ");
+        return 0;
+    }
+    else if(bytes_sent == 0)
+    {
+        return 0;
     }
     return 0;
 }
@@ -313,7 +330,8 @@ int Response::chunked_response_body()
     }
     else
     {
-        write(client_fd, "0\r\n\r\n", 5);
+        if(write(client_fd, "0\r\n\r\n", 5) < 0)
+            perror("write  ");
         req[client_fd].fd_file.close();
         return 0;
     }

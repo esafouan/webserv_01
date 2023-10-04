@@ -35,7 +35,12 @@ void Request::replace_slash_in_target(Server &serv)
                     if (serv.index == "")
                     {
                         if (serv.locations[i].autoindex == true)
-                            target = serv.locations[i].root;
+                        {
+                            if (serv.locations[i].root == "")
+                                target = serv.root;
+                            else
+                                target = serv.locations[i].root;
+                        } 
                         else
                             status = "403";
                     }
@@ -101,7 +106,10 @@ void Request::short_uri(Server &serv)
                         {
                             if (serv.locations[i].autoindex == true)
                             {
-                                target = serv.locations[i].root;
+                                if (serv.locations[i].root == "")
+                                    target = serv.root;
+                                else
+                                    target = serv.locations[i].root;
                             }  
                             else
                                 status = "403";
@@ -173,7 +181,12 @@ void Request::long_uri(Server &serv)
                             if (serv.index == "")
                             {
                                 if (serv.locations[i].autoindex == true)
-                                    target += serv.locations[i].root;
+                                {
+                                    if (serv.locations[i].root == "")
+                                        target = serv.root;
+                                    else
+                                        target = serv.locations[i].root;
+                                }
                                 else
                                     status = "403";
                             }

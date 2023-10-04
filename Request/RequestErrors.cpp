@@ -31,19 +31,20 @@ void Request:: error_handling(Server &serv)
         else if (count_slash(target) > 1)
             long_uri(serv);
     }
-
+    // std::cout << target << std::endl;
     real_path();
     if (status == "200")
     {   
         if (access(target.c_str(), F_OK ) == -1)
             status = "404";
-        else if (find_key("Content-Length", StoreHeaders) && serv.max_body > 0)
+        else if (find_key("Content-Length", StoreHeaders))
         {
             std::stringstream stream(valueOfkey("Content-Length", StoreHeaders));
             stream >> this->lenght_of_content;
-            
-            if (this->lenght_of_content > serv.max_body)
-                status = "413";
+            if (serv.max_body > 0)
+                if (this->lenght_of_content > serv.max_body)
+                    status = "413";
+            //std::cout <<"zmlqqqqqqqqqqqqqqq = " <<this->lenght_of_content << std::endl;
         }
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
             status = "403";

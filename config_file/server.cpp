@@ -168,7 +168,8 @@ int Server::check_duplicate(Server &server)
             return 0;
         tmp[server.duplicate_in_server[i]] = "";
     }
- 
+    if (tmp.count("listen") == 0 || tmp.count("host") == 0 || tmp.count("server_name") == 0)
+        return 0;
     return 1;
 }
 
@@ -182,20 +183,18 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
         int flag = 0;
         for (int i = 0; i < 8; i++)
         {
-            if (pointer_to_fun[i].key == holder[0])
+            if (holder.size() > 0 && pointer_to_fun[i].key == holder[0])
             {
                 flag = 1;
                 if (!(this->*(pointer_to_fun[i].my_function))(serv, holder))
-                {
-
                     throw error_config();
-                }
             }
         }
-        if(!check_duplicate(serv))
-            throw error_config();
+
         if (!flag)
-        {
+        {      
+            if(!check_duplicate(serv))
+                throw error_config();
             location_flag = 1;
         }
            
@@ -204,18 +203,22 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
 
  int    Server::fill_locations(std::ifstream &c_file, Server &serv , my_location *ptr)
  {
-    std::vector<std::string> holder;
-    Server::ft_split(line, " ", holder);
+
     if (location_flag)
-    {
-        if (holder[0] == "location")//location scop;
+    {  
+        std::vector<std::string> holder;
+        Server::ft_split(line, " ", holder);
+
+        if (holder.size() > 0 && holder[0] == "location")//location scop;
         {
             location loc;
-            loc.name(loc, holder);
+            
+            if(!loc.name(loc, holder))
+                throw error_config();
             std::getline(c_file, line);
             std::vector<std::string> holder;
             Server::ft_split(line, " ", holder);
-            if (holder[0] != "{")
+            if (holder.size() > 0 && holder[0] != "{")
                 throw error_config();
             while(std::getline(c_file, line))
             {
@@ -226,7 +229,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 int flag = 0;
                 for (int i = 0; i < 10; i++)
                 {
-                    if (ptr[i].key_location == holder[0])
+                    if (holder.size() > 0 && ptr[i].key_location == holder[0])
                     {
                         flag = 1;
                         if (!(loc.*(ptr[i].my_func))(loc, holder))
@@ -235,7 +238,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 }
                 if (!flag)
                 {
-                    if (holder[0] != "}")
+                    if (holder.size() > 0 && holder[0] != "}")
                         throw error_config();
                     if (!loc.loc_duplicate())
                         throw error_config();
@@ -244,7 +247,7 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
                 }
             }
         }
-        else if (holder[0] == "};")
+        else if (holder.size() > 0 && holder[0] == "};")
         {
             this->servers.push_back(serv);
             return 1;
@@ -318,7 +321,6 @@ Server::Server(char *config_file)
         {"upload_path", &location::uploadpath},
     };
 
-    
     while (std::getline(c_file, line))
     {
         if (line == "server{")
@@ -337,6 +339,19 @@ Server::Server(char *config_file)
         else
             throw error_config();
     }
+    std::map<std::string , std::string> check;
+    for (int i = 0 ; i < servers.size(); i++)
+    {
+        std::stringstream stream;
+        stream << servers[i].listen;
+        
+        std::string dst = "";
+        dst += servers[i].host + stream.str()+ servers[i].server_name;
+        if (check.count(dst) == 1)
+            throw error_config();
+        check[dst] = "";
+    }
+
 
 }
 
