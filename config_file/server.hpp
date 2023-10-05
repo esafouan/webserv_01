@@ -39,9 +39,8 @@ class Server
         Server();
         Server(char *config_file);
         ~Server();
-        void print_all();
         int     check_duplicate(Server &server);
-        void    fill_server(std::ifstream &c_file, Server &serv ,my_func *pointer_to_fun);
+        void    fill_server( Server &serv ,my_func *pointer_to_fun);
         int     fill_locations(std::ifstream &c_file, Server &serv , my_location *ptr);
         void    ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts);
         int     get_listen(Server &server, std::vector<std::string> &hold);

@@ -4,7 +4,7 @@ void Request::replace_slash_in_target(Server &serv)
 {
     int no_root_location = 0;
 
-    for (int i = 0; i < serv.locations.size(); i++)
+    for (int i = 0; i < (int)serv.locations.size(); i++)
     {
         if (serv.locations[i].NAME == "/")
         {
@@ -36,11 +36,11 @@ void Request::replace_slash_in_target(Server &serv)
                     {
                         if (serv.locations[i].autoindex == true)
                         {
-                            if (serv.locations[i].root == "")
-                                target = serv.root;
-                            else
+                            if (serv.locations[i].root != "")
                                 target = serv.locations[i].root;
-                        } 
+                            else
+                                target = serv.root;
+                        }
                         else
                             status = "403";
                     }
@@ -53,6 +53,7 @@ void Request::replace_slash_in_target(Server &serv)
             else
             {
                 target = serv.locations[i]._return;
+                status = "301";
                 return ;
             }
         }
@@ -65,7 +66,7 @@ int Request::count_slash(std::string tar)
 {
     int count = 0;
     
-    for (int i = 0; i < tar.length(); i++)
+    for (int i = 0; i < (int)tar.length(); i++)
         if (tar[i] == '/')
             count++;
     return (count);
@@ -73,7 +74,7 @@ int Request::count_slash(std::string tar)
 
 void Request::short_uri(Server &serv)
 {
-    for (int i = 0; i < serv.locations.size(); i++)
+    for (int i = 0; i < (int)serv.locations.size(); i++)
     {
         if (serv.locations[i].NAME != "/")
         {
@@ -106,17 +107,16 @@ void Request::short_uri(Server &serv)
                         {
                             if (serv.locations[i].autoindex == true)
                             {
-                                if (serv.locations[i].root == "")
-                                    target = serv.root;
-                                else
+                                if(serv.locations[i].root != "")
                                     target = serv.locations[i].root;
-                            }  
+                                else
+                                    target = serv.root;
+                            }
                             else
                                 status = "403";
                         }
                         else
                             target = serv.index;
-
                     }
                     else
                         target = serv.locations[i].index;
@@ -125,6 +125,7 @@ void Request::short_uri(Server &serv)
                 {
                     target = serv.locations[i]._return;
                     status = "301";
+                    return ;
                 }
             }
         }
@@ -142,10 +143,10 @@ void Request::long_uri(Server &serv)
     target = "";
     int flag2;
 
-    for (int j = 0; j < uri.size(); j++)
+    for (int j = 0; j < (int)uri.size(); j++)
     {
         flag2 = 0;
-        for (int i = 0; i < serv.locations.size(); i++)
+        for (int i = 0; i < (int)serv.locations.size(); i++)
         {
             if (serv.locations[i].NAME != "/")
             {
@@ -182,10 +183,10 @@ void Request::long_uri(Server &serv)
                             {
                                 if (serv.locations[i].autoindex == true)
                                 {
-                                    if (serv.locations[i].root == "")
-                                        target = serv.root;
-                                    else
+                                    if(serv.locations[i].root != "")
                                         target = serv.locations[i].root;
+                                    else
+                                        target = serv.root;
                                 }
                                 else
                                     status = "403";
@@ -214,7 +215,7 @@ void Request::long_uri(Server &serv)
         }
         if (!flag2)
             target += uri[j];
-        if (j < uri.size() - 1)
+        if (j < (int)uri.size() - 1)
         {
             if(target != "")
             {
@@ -240,7 +241,7 @@ void Request::directory_moved_permanently()
                 if (target[target.length() - 1] != '/')
                 {
                     status = "301"; 
-                    target += "/";
+                    this->uri_for_response += "/";
                 }
             }
         }
@@ -266,7 +267,7 @@ void Request::encoded_uri()
     myMap.insert(std::pair<std::string, char>("3D", '='));
     myMap.insert(std::pair<std::string, char>("2B", '+'));
    
-    for (int i = 0; i < target.length(); i++)
+    for (int i = 0; i < (int)target.length(); i++)
     {
         if (target[i] == '%')
         {

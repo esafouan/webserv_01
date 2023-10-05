@@ -6,10 +6,10 @@ Server::Server()
     this->host = "";
     this->root = "";
     this->index = "";
-    server_name = "";
-    upload_path = "";
-    max_body = -1;
-    listen = -1;
+    this->server_name = "";
+    this->upload_path = "";
+    this->max_body = -1;
+    this->listen = -1;
 }
 
 void Server::ft_split(std::string input, std::string delimiter, std::vector<std::string> &parts)
@@ -73,7 +73,7 @@ int   Server::get_host(Server &server, std::vector<std::string> &hold)
     if (host.size() != 4)
         return 0;
     int i = 0;
-    while(i < host.size())
+    while(i < (int)host.size())
     {
         if (!check_digits(host[i]))
             return 0;
@@ -120,6 +120,8 @@ int   Server::get_root(Server &server, std::vector<std::string> &hold)
 {  
     if (hold.size() != 2)
         return 0;
+    if (access(hold[1].c_str(), F_OK) == -1)
+        return 0;
     if(hold[1][hold[1].length() - 1] != '/')
         return (0);
     server.root = hold[1];
@@ -150,7 +152,7 @@ int Server::Upload(Server &server, std::vector<std::string> &hold)
         return 0;
     if (hold[1][hold[1].length() - 1] != '/')
         return (0);
-    if(access(hold[1].c_str(), F_OK) == -1)
+    if (access(hold[1].c_str(), F_OK) == -1)
         return 0;
     server.upload_path = hold[1];
     server.duplicate_in_server.push_back("upload_path");
@@ -162,7 +164,7 @@ int Server::check_duplicate(Server &server)
 {
     std::map<std::string, std::string> tmp;
 
-    for (int i = 0; i < server.duplicate_in_server.size(); i++)
+    for (int i = 0; i < (int)server.duplicate_in_server.size(); i++)
     {
         if (tmp.count(server.duplicate_in_server[i]) == 1)
             return 0;
@@ -173,7 +175,7 @@ int Server::check_duplicate(Server &server)
     return 1;
 }
 
-void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointer_to_fun)
+void    Server::fill_server( Server &serv ,my_func *pointer_to_fun)
 {
     std::vector<std::string> holder;
     Server::ft_split(line, " ", holder);
@@ -257,40 +259,6 @@ void    Server::fill_server(std::ifstream &c_file, Server &serv ,my_func *pointe
     }
     return 0;
 }
-
-void Server::print_all()
-{
-    for (int i = 0 ; i < servers.size(); i++)
-    {
-        std::cout << "----------------" << "Server" << i <<"----------------" <<std::endl;
-        std::cout << "listen :"<< std::endl;
-        // std::vector<u_int16_t>::iterator iter = servers[i].listen.begin();
-        // for(iter; iter < servers[i].listen.end(); iter++)
-        //     std::cout << *iter << " ";
-        std::cout << std::endl;
-        std::cout << "host : \n" << servers[i].host << std::endl;
-       // std::vector<std::string>::iterator it1 = servers[i].server_name.begin();
-       // for(it1; it1 < servers[i].server_name.end(); it1++)
-         //   std::cout << "server_name :\n" << *it1 << std::endl;
-        std::map<std::string , std::string>::iterator it = servers[i].error_page.begin();
-        std::cout << "error_page :\n";
-        while (it !=  servers[i].error_page.end())
-        {
-            std::cout << it->first << " :: " << it->second << std::endl;
-            it++;
-        }
-        std::cout << "max_body :\n" << servers[i].max_body << std::endl;
-        std::cout << "root :\n" << servers[i].root << std::endl;
-        std::cout << "index :\n" << servers[i].index << std::endl;
-        std::vector<location>::iterator itr = servers[i].locations.begin();
-        for(itr; itr < servers[i].locations.end(); itr++)
-        {
-            std::cout << "**************************** loactions**************************** :\n";
-            itr->print();
-        }
-    }
-}
-
 Server::Server(char *config_file)
 {
     std::ifstream c_file(config_file);
@@ -330,7 +298,7 @@ Server::Server(char *config_file)
             while (std::getline(c_file, line))
             {
                 if (!location_flag)
-                    fill_server(c_file, serv ,pointer_to_fun);
+                    fill_server( serv ,pointer_to_fun);
                 if (location_flag)
                     if (fill_locations(c_file, serv , ptr))
                         break;
@@ -340,7 +308,7 @@ Server::Server(char *config_file)
             throw error_config();
     }
     std::map<std::string , std::string> check;
-    for (int i = 0 ; i < servers.size(); i++)
+    for (int i = 0 ; i < (int)servers.size(); i++)
     {
         std::stringstream stream;
         stream << servers[i].listen;

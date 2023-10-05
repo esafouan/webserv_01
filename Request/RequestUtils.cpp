@@ -4,7 +4,7 @@ void Request::ft_split(std::string input, std::string delimiter, std::vector<std
 {
     size_t startPos = 0;
     size_t endPos;
-
+ 
     while ((endPos = input.find(delimiter, startPos)) != std::string::npos)
     {
         parts.push_back(input.substr(startPos, endPos - startPos));
@@ -28,7 +28,7 @@ int Request::find_key(std::string key, std::vector<std::pair<std::string, std::s
 {
     std::vector<std::pair<std::string, std::string> >::iterator it = postR.begin();
 
-    for (it; it != postR.end(); it++)
+    for (; it != postR.end(); it++)
     {
         if (it->first == key)
             return 1;
@@ -40,7 +40,7 @@ std::string Request::valueOfkey(std::string key, std::vector<std::pair<std::stri
 {
     std::vector<std::pair<std::string, std::string> >::iterator it = postR.begin();
 
-    for (it; it != postR.end(); it++)
+    for (; it != postR.end(); it++)
     {
         if (it->first == key)
             return it->second;

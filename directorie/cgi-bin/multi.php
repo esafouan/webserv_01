@@ -4,7 +4,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // $name = $_POST["name"];
     // $email = $_POST["email"];
 
-    $uploadDir = "../upload/";
+    $uploadDir = "../upload/cgi/";
     if (!file_exists($uploadDir))
         mkdir($uploadDir, 0777, true);
     $uploadedFiles = [];

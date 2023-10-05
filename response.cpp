@@ -80,8 +80,6 @@ std::string Response::normal_pages_header(size_t contentLength)
     header += "Content-Type: text/html\r\n";
     std::stringstream contentLengthStream;
     contentLengthStream << contentLength;
-    // if(!is_cookie_sit())
-    //     header+=  "Set-Cookie: " + cookie_header() + "\r\n";
     header += "Content-Length: " + contentLengthStream.str() + "\r\n";
     header += "\r\n";
 
@@ -99,7 +97,6 @@ std::string Response::get_last()
         else
             break;
     }
-    // std::cout <<"here " <<path << std::endl;
     return path;
 }
 std::string Response::redirect_pages_header()
@@ -124,47 +121,40 @@ bool Response::is_cookie_sit()
         return 0;
     return 1;
 }
-std::string Response::cookie_header() {
-    std::ostringstream response;
-    
-    std::string cookieName = "smiya";
-    std::string cookieValue = "value";
-    // std::string cookieAttributes = "Path=/ hada optional";  
-    
-    std::string setCookieHeader = cookieName + "=" + cookieValue + "; ";
-    return setCookieHeader;
-}
 void Response::response_by_a_page(std::string path)
 {
-    size_t file_size;
-
     std::ifstream fd_file(path.c_str());
     fd_file.seekg(0, std::ios::end);
     std::streampos fileSize = fd_file.tellg();
     fd_file.seekg(0, std::ios::beg);
     std::string response_header = normal_pages_header((size_t)fileSize);
-    // write(client_fd, response_header.c_str(), response_header.size());
-    const size_t buffer_size = 1024;
-    char buffer[buffer_size];
-    if (fd_file.read(buffer, (size_t)fileSize))
+    if(req[client_fd].method == "HEAD")
     {
-        response_header.append(buffer,(size_t)fileSize);
-        ssize_t bytes_sent = write(client_fd, response_header.c_str(), response_header.size());
-        
-        if (bytes_sent == -1)
+        if(write(client_fd, response_header.c_str(), response_header.size()) <= 0)
         {
-            std::remove(req[client_fd].outfile_name.c_str());
-            perror("write  ");
-        }
-        else if(bytes_sent == 0)
-        {
-            perror("write1: ");
             fd_file.close();
             return ;
         }
     }
     else
-        perror("read_file ");
+    {
+        const size_t buffer_size = 1024;
+        char buffer[buffer_size];
+        if (fd_file.read(buffer, (size_t)fileSize))
+        {
+            response_header.append(buffer,(size_t)fileSize);
+            ssize_t bytes_sent = write(client_fd, response_header.c_str(), response_header.size());
+           if(bytes_sent <= 0)
+            {
+                perror("write1: ");
+                std::remove(req[client_fd].outfile_name.c_str());
+                fd_file.close();
+                return ;
+            }
+        }
+        else
+            perror("read_file ");
+    }
     fd_file.close();
 }
 std::string Response::get_content_type()
@@ -223,7 +213,7 @@ std::string Response::generateDirectoryListing()
 {
     std::stringstream htmlStream;
     htmlStream << "<html><body>\n";
-    htmlStream << "<h1>Directory Listing: " << req[client_fd].target << "</h1>\n";
+    htmlStream << "<h1>Directory Listing </h1>\n";
     DIR *dir = opendir(req[client_fd].target.c_str());
 
     
@@ -272,16 +262,11 @@ int Response::directorie_list()
     dir = generateDirectoryListing();
     file_size = dir.size();
     response_header = normal_pages_header((size_t)(file_size));
-    // write(client_fd, response_header.c_str(), response_header.size());
     response_header.append(dir);
     ssize_t bytes_sent = write(client_fd, response_header.c_str(), response_header.size());
-    if (bytes_sent == -1)
+    if(bytes_sent <= 0)
     {
-        perror("write  ");
-        return 0;
-    }
-    else if(bytes_sent == 0)
-    {
+        perror("write ");
         return 0;
     }
     return 0;
@@ -293,10 +278,7 @@ std::string Response::chunked_header()
     header += "HTTP/1.1 ";
     header += req[client_fd].status;
     header += "\r\n";
- 
     header += "Content-Type: " + get_content_type() + "\r\n";
-    // if(!is_cookie_sit())
-    //     header+=  "Set-Cookie: " + cookie_header() + "\r\n";
     header += "Transfer-Encoding: chunked\r\n";
     header += "\r\n";
 
@@ -312,7 +294,11 @@ int Response::chunked_response_headers()
     std::streampos fileSize = req[client_fd].fd_file.tellg();
     req[client_fd].fd_file.seekg(0, std::ios::beg);
     req[client_fd].chunked_file_size_response = (size_t)fileSize;
-    send(client_fd, chunked_header().c_str(), chunked_header().size(), 0);
+    if(write(client_fd, chunked_header().c_str(), chunked_header().size()) <= 0)
+    {
+        req[client_fd].fd_file.close();
+        return 0;
+    }
     req[client_fd].header_flag = 1;
     return 1;
 }
@@ -330,8 +316,8 @@ int Response::chunked_response_body()
     }
     else
     {
-        if(write(client_fd, "0\r\n\r\n", 5) < 0)
-            perror("write  ");
+        if(write(client_fd, "0\r\n\r\n", 5) <= 0)
+            perror("write3  ");
         req[client_fd].fd_file.close();
         return 0;
     }
@@ -342,7 +328,7 @@ int Response::chunked_response_body()
         std::string chunk_size_line = chunk_size_stream.str();
         chunk_size_line.append(buffer, buffer_size);
         chunk_size_line.append("\r\n", 2);
-        if (send(client_fd, chunk_size_line.c_str(), chunk_size_line.size(), 0) < 0)
+        if (write(client_fd, chunk_size_line.c_str(), chunk_size_line.size()) <= 0)
         {
             req[client_fd].fd_file.close();
             return 0;

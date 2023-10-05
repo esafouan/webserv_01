@@ -64,19 +64,5 @@ class location
         int upload_state(location &location, std::vector<std::string> &hold);
         int uploadpath(location &location, std::vector<std::string> &hold);
         int loc_duplicate();
-        
-        void    print()
-        {
-            std::cout << NAME << std::endl;
-            std::cout << "root :\n" << root << std::endl;
-            std::cout << "autoindex :\n" << autoindex << std::endl;
-            std::cout << "POST :\n" << POST << std::endl;
-            std::cout << "GET :\n" << GET << std::endl;
-            std::cout << "DELETE :\n" << DELETE << std::endl;
-            std::cout << "index :\n" << index << std::endl;
-            std::cout << "return :\n" << _return << std::endl;
-            std::cout << "cgi :\n" << cgi << std::endl;
-            std::cout << "upload :\n" << upload_s << std::endl;
-        }
         ~location();
 };

@@ -65,9 +65,6 @@ typedef struct ep
     struct epoll_event events[1024];
 } epol ;
 
-
-
-void err(std::string str);
 void init(Server& ser,epol *ep);
 void fill_ser_Add(Server &ser,int i);
 void run( std::vector<Server> servers,epol *ep);

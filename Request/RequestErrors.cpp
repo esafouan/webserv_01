@@ -13,28 +13,26 @@ void Request::generate_error_page(Server &server)
 
 void Request:: error_handling(Server &serv)
 {
+    if (serv.max_body > 0)
+        maxbody = serv.max_body;
     if (method != "GET" && method != "DELETE" && method != "POST")
-    {
-        if (method == "PUT" || method == "HEAD" || method == "TRACE" || method == "CONNECT")
-            status = "501";
-        else
-            status = "404";
-    }
+        status = "501";
     else if (target.size() > 2048)
         status = "414";
     else
     {
         if (target == "/")
             replace_slash_in_target(serv);
-        else if (count_slash(target) == 1 && target != "/")
+        if (count_slash(target) == 1 && target != "/")
             short_uri(serv);
-        else if (count_slash(target) > 1)
+        if (count_slash(target) > 1)
             long_uri(serv);
     }
-    // std::cout << target << std::endl;
-    real_path();
+    if (access(target.c_str(), F_OK) == -1)
+        encoded_uri();
     if (status == "200")
     {   
+        real_path();
         if (access(target.c_str(), F_OK ) == -1)
             status = "404";
         else if (find_key("Content-Length", StoreHeaders))
@@ -42,9 +40,10 @@ void Request:: error_handling(Server &serv)
             std::stringstream stream(valueOfkey("Content-Length", StoreHeaders));
             stream >> this->lenght_of_content;
             if (serv.max_body > 0)
+            {
                 if (this->lenght_of_content > serv.max_body)
                     status = "413";
-            //std::cout <<"zmlqqqqqqqqqqqqqqq = " <<this->lenght_of_content << std::endl;
+            }
         }
         else if (method == "GET"  && access(target.c_str(), R_OK) == -1)
             status = "403";
@@ -64,7 +63,7 @@ void Request:: error_handling(Server &serv)
         else if (!find_key("Transfer-Encoding", StoreHeaders) && !find_key("Content-Length", StoreHeaders) && method == "POST")
             status = "400";
         
-        else if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
-            status = "400";
+        // else if (find_key("Transfer-Encoding", StoreHeaders) && find_key("Content-Length", StoreHeaders) && method == "POST")
+        //     status = "400";
     }
 }

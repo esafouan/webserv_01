@@ -15,6 +15,8 @@ class Request
 
         int header_flag;
         long long lenght_Readed;
+        long long maxbody;
+        long long max_readed;
         long long lenght_of_content;
         int calcul_chunk_flag;    
         int flag_uri;
@@ -30,9 +32,9 @@ class Request
         std::ifstream fd_file;
         
         int chunk_size;
-        size_t Bytes_readed;
+        int Bytes_readed;
         size_t chunked_file_size_response;
-
+        int last_chunk;
         std::string rest_of_boundry;
         std::ofstream outfile;
         std::string outfile_name;

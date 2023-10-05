@@ -10,9 +10,9 @@ SRC = 	multiplexer.cpp \
    		config_file/server.cpp\
     	socket.cpp response.cpp
 OBJ = $(SRC:.cpp=.o)
-CXX = g++
+CXX = c++
 RM = rm -f
-CPPFLAGS =   -std=c++98  -fsanitize=address -g3
+CPPFLAGS =  -Wall -Wextra -Werror  -std=c++98  #-fsanitize=address -g3
 NAME = webserve
 
 all: $(NAME)
